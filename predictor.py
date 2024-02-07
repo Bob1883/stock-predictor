@@ -1,15 +1,19 @@
 from keras.models import Model
 from keras.layers import Input, LSTM, concatenate, Dense
+from keras import layers
+
 import tensorflow as tf
 from tensorflow import keras
-from keras import layers
+
 from kerastuner.tuners import RandomSearch
 
-import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import OneHotEncoder
+
 from matplotlib import pyplot as plt
 import pandas as pd
+import numpy as np
 import os
 import time
 
@@ -17,42 +21,46 @@ from constants import *
 from load_data import Load_data
 
 # TODO
-# 1.x                                             Load in day data and use it when training, 20 days back
-# 2.x                               rewrite change, becuse now the price data is of, use day data instead
-# 3.x              Fix the scaler better so every parameter is scaled correctly, and not scal all at ones 
-# 4. Get somthing that makes the model archetecture automaticly, its called hyperparameter tuning i think
-# 5.x         Make sure that the parameters are separated this time, so that the model knows what is what
-# 6.      Find a way so that the model knows what company it is, so that it can predict the right company
-# 7.                              Add indicators to the model, like RSI, MACD, Bollinger Bands, and so on
-# 8.                               Add the other data and see if it improves the model, if not, remove it
-# 9.                 Try to add the comodity data, its to much right know so i need to find a work around
-# 10.                                           Do some backtesting, find the best strategy for the model
-# 11.         Make a program that checks what comoditeis are the closest to the change in the stock price
+# 1.x                                               Load in day data and use it when training, 20 days back
+# 2.x                                 rewrite change, becuse now the price data is of, use day data instead
+# 3.x                Fix the scaler better so every parameter is scaled correctly, and not scal all at ones 
+# 4.x  Get somthing that makes the model archetecture automaticly, its called hyperparameter tuning i think
+# 5.x           Make sure that the parameters are separated this time, so that the model knows what is what
+# 6.x       Find a way so that the model knows what company it is, so that it can predict the right company
+# 7.                                Add indicators to the model, like RSI, MACD, Bollinger Bands, and so on
+# 8.                                 Add the other data and see if it improves the model, if not, remove it
+# 9.                   Try to add the comodity data, its to much right know so i need to find a work around
+# 10.                                             Do some backtesting, find the best strategy for the model
+# 11.           Make a program that checks what comoditeis are the closest to the change in the stock price
 
 companies = []
 
 n_past = 20    # Number of past days we want to use to predict the future.
 n_future = 1   # Number of days we want to predict into the future.
 
+data = {}
+test_stock = "tesla"   
+
 for filename in os.listdir("./data/data-week"):
     company_name = filename.split("-")[0]
     if os.path.isfile(f"data/data-day/{company_name}.csv"):
         companies.append(company_name)
 
-data = {}
-test_stock = "tesla"   
+encoder = OneHotEncoder(sparse=False)
 
 def build_model(hp):
     input_prices = Input(shape=(X_prices.shape[1], X_prices.shape[2]))
     input_news = Input(shape=(X_news.shape[1], 1))
+    input_name = Input(shape=(1,))
 
     lstm_prices = LSTM(hp.Int('units_prices', min_value=32, max_value=512, step=32))(input_prices)
     lstm_news = LSTM(hp.Int('units_news', min_value=32, max_value=512, step=32))(input_news)
+    lstm_name = layers.Flatten()(input_name)    
 
-    concatenated = concatenate([lstm_prices, lstm_news])
-    output = Dense(1, activation='linear')(concatenated)
+    concatenated = concatenate([lstm_prices, lstm_news, lstm_name])
+    output = Dense(2, activation='linear')(concatenated)
 
-    model = Model(inputs=[input_prices, input_news], outputs=output)
+    model = Model(inputs=[input_prices, input_news, input_name], outputs=output)
 
     model.compile(
         optimizer=keras.optimizers.Adam(
@@ -145,43 +153,44 @@ for company in companies:
 
 X_prices = []
 X_news = []
+X_name = []
+
+X_indecaters = []
+
 y_changes = []
 
 for company in data:
+    name = encoder.fit_transform([[company]])
     for i in range(n_past, len(data[company]['prices'])):
+        X_name.append(name)
         X_prices.append(data[company]['prices'][i])
         X_news.append(data[company]['news'][i])
         y_changes.append(data[company]['changes'][i])
 
 X_prices = np.array(X_prices)
 X_news = np.array(X_news)
+X_name = np.array(X_name)   
+
 y_changes = np.array(y_changes)
 
-# Normalize the price data
 scaler_prices = MinMaxScaler()
 X_prices_normalized = scaler_prices.fit_transform(X_prices.reshape(-1, X_prices.shape[-1])).reshape(X_prices.shape)
 
-# Check the shape of X_news
 if len(X_news.shape) < 2:
     X_news = np.expand_dims(X_news, axis=1)
 
-# Reshape the news data
 X_news_reshaped = X_news.reshape(X_news.shape[0], X_news.shape[1], 1)
 
 # Check the shape of X_prices
 if len(X_prices.shape) < 3:
     X_prices = np.expand_dims(X_prices, axis=2)
 
-# Split the data into training and testing sets
-X_prices_train, X_prices_test, X_news_train, X_news_test, y_train, y_test = train_test_split(
-    X_prices, X_news_reshaped, y_changes, test_size=0.2, random_state=42
-)
-
+X_prices_train, X_prices_test, X_news_train, X_news_test, X_name_train, X_name_test, y_train, y_test = train_test_split(X_prices, X_news_reshaped, X_name, y_changes, test_size=0.2, random_state=42)
 
 tuner = RandomSearch(
     build_model,
     objective='val_mae',           # The metric that should be optimized
-    max_trials=5,                  # The numbers of rounds to test
+    max_trials=10,                  # The numbers of rounds to test
     executions_per_trial=3,        # The number of models that should be tested in each round
     directory='models',            # The directory where the models should be saved
     project_name='stock-predictor' # The name of the project, used in the directory to separate different projects
@@ -189,11 +198,14 @@ tuner = RandomSearch(
 
 tuner.search_space_summary()
 
-tuner.search([X_prices_train, X_news_train], y_train,
-             epochs=50,
-             batch_size=16,
-             validation_data=([X_prices_test, X_news_test], y_test),
-             verbose=2)
+tuner.search(
+    [X_prices_train, X_news_train, X_name_train], 
+    y_train,
+    epochs=50,
+    batch_size=16,
+    validation_data=([X_prices_test, X_news_test, X_name_test], y_test),
+    verbose=1
+)
 
 tuner.results_summary()
 
