@@ -1,3 +1,10 @@
+from indicators import Indicators   
+from load_data import Load_data
+from constants import *
+
+# mute tensorflow warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 from keras.models import Model
 from keras.layers import Input, LSTM, concatenate, Dense
 from keras import layers
@@ -5,20 +12,11 @@ from keras import layers
 import tensorflow as tf
 from tensorflow import keras
 
-from kerastuner.tuners import RandomSearch
+from keras_tuner import RandomSearch
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import OneHotEncoder
-
-from matplotlib import pyplot as plt
-import pandas as pd
-import numpy as np
-import os
-import time
-
-from constants import *
-from load_data import Load_data
 
 # TODO
 # 1.x                                               Load in day data and use it when training, 20 days back
@@ -29,9 +27,11 @@ from load_data import Load_data
 # 6.x       Find a way so that the model knows what company it is, so that it can predict the right company
 # 7.                                Add indicators to the model, like RSI, MACD, Bollinger Bands, and so on
 # 8.                                 Add the other data and see if it improves the model, if not, remove it
-# 9.                   Try to add the comodity data, its to much right know so i need to find a work around
+# 9.x                  Try to add the comodity data, its to much right know so i need to find a work around
 # 10.                                             Do some backtesting, find the best strategy for the model
-# 11.           Make a program that checks what comoditeis are the closest to the change in the stock price
+# 11.x          Make a program that checks what comoditeis are the closest to the change in the stock price
+# 12.                                                            Dubble check price thing it might be wrong 
+# 13.                                                                           Change get data to be a def
 
 companies = []
 
@@ -70,11 +70,12 @@ def build_model(hp):
 
     return model
 
+print("\nLoading data...")
 for company in companies:
     if company != test_stock:
         # print out a looding bar, that moves to show how many percent are done
         percent = round((companies.index(company) / len(companies)) * 100)
-        print(f"Loading data: {percent}% done", end="\r")
+        printProgressBar(percent, 100, length = 50)
 
         loader = Load_data(period=259, company=company.lower())
 
@@ -142,9 +143,6 @@ for company in companies:
                 else:
                     changes.append(0)
                 
-
-        print(changes)
-
         data[company]['prices'] = prices
         data[company]['changes'] = changes
         data[company]['news'] = company_data['score'].values.tolist()
@@ -153,11 +151,14 @@ for company in companies:
 
 X_prices = []
 X_news = []
+X_commodity = []
 X_name = []
 
 X_indecaters = []
 
 y_changes = []
+
+best_commodities = find_best_commodity(companies)
 
 for company in data:
     name = encoder.fit_transform([[company]])
@@ -167,8 +168,11 @@ for company in data:
         X_news.append(data[company]['news'][i])
         y_changes.append(data[company]['changes'][i])
 
+    X_commodity.append(best_commodities[company])
+
 X_prices = np.array(X_prices)
 X_news = np.array(X_news)
+X_commodity = np.array(X_commodity)
 X_name = np.array(X_name)   
 
 y_changes = np.array(y_changes)
@@ -190,7 +194,7 @@ X_prices_train, X_prices_test, X_news_train, X_news_test, X_name_train, X_name_t
 tuner = RandomSearch(
     build_model,
     objective='val_mae',           # The metric that should be optimized
-    max_trials=10,                  # The numbers of rounds to test
+    max_trials=10,                 # The numbers of rounds to test
     executions_per_trial=3,        # The number of models that should be tested in each round
     directory='models',            # The directory where the models should be saved
     project_name='stock-predictor' # The name of the project, used in the directory to separate different projects

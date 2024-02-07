@@ -1,105 +1,111 @@
 import pandas as pd
 import numpy as np
 
-def calculate_obv(price, volume):
-    changes = price.diff()
+class Indicators:
+    def calculate_obv(company):
+        df = pd.read_csv(f"data/data-day/{company}.csv")
+        df = df.dropna()
+        price = df['Adj Close']
+        volume = df['Volume']
 
-    obv_values = [0]
-    for change, volume in zip(changes[1:], volume[1:]):
-        if change > 0:
-            obv_values.append(obv_values[-1] + volume)
-        elif change < 0:
-            obv_values.append(obv_values[-1] - volume)
-        else:
-            obv_values.append(obv_values[-1])
+        changes = price.diff()
 
-    return pd.Series(obv_values, index=price.index)
+        obv_values = [0]
+        for change, volume in zip(changes[1:], volume[1:]):
+            if change > 0:
+                obv_values.append(obv_values[-1] + volume)
+            elif change < 0:
+                obv_values.append(obv_values[-1] - volume)
+            else:
+                obv_values.append(obv_values[-1])
 
-def calculate_ad_line(company):
-    df = pd.read_csv(f"data/data-week/{company}-week.csv")
-    df = df.dropna()
-    data = df.copy()
-    clv = ((data['Adj Close'] - data['Low']) - (data['High'] - data['Adj Close'])) / (data['High'] - data['Low'])
-    ad_values = (clv * data['Volume']).cumsum()
+        return pd.Series(obv_values, index=price.index)
 
-    return ad_values
+    def calculate_ad_line(company):
+        df = pd.read_csv(f"data/data-day/{company}.csv")
+        df = df.dropna()
+        data = df.copy()
+        clv = ((data['Adj Close'] - data['Low']) - (data['High'] - data['Adj Close'])) / (data['High'] - data['Low'])
+        ad_values = (clv * data['Volume']).cumsum()
 
-def calculate_adx(company, window):
-    df = pd.read_csv(f"data/data-week/{company}-week.csv")
-    df = df.dropna()
-    data = df.copy()
+        return ad_values
 
-    high = data['High']
-    low = data['Low']
-    close = data['Adj Close']
+    def calculate_adx(company, window):
+        df = pd.read_csv(f"data/data-day/{company}.csv")
+        df = df.dropna()
+        data = df.copy()
 
-    up_move = high.diff()
-    down_move = low.diff()
+        high = data['High']
+        low = data['Low']
+        close = data['Adj Close']
 
-    plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0)
-    minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0)
+        up_move = high.diff()
+        down_move = low.diff()
 
-    tr = high.combine(close.shift(), max) - low.combine(close.shift(), min)
+        plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0)
+        minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0)
 
-    plus_di = 100 * pd.Series(plus_dm).rolling(window).sum() / pd.Series(tr).rolling(window).sum()
-    minus_di = 100 * pd.Series(minus_dm).rolling(window).sum() / pd.Series(tr).rolling(window).sum()
+        tr = high.combine(close.shift(), max) - low.combine(close.shift(), min)
 
-    dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
-    adx = dx.rolling(window).mean()
+        plus_di = 100 * pd.Series(plus_dm).rolling(window).sum() / pd.Series(tr).rolling(window).sum()
+        minus_di = 100 * pd.Series(minus_dm).rolling(window).sum() / pd.Series(tr).rolling(window).sum()
 
-    return adx
+        dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
+        adx = dx.rolling(window).mean()
 
-def calculate_aroon_oscillator(company, window):
-    df = pd.read_csv(f"data/data-week/{company}-week.csv")
-    df = df.dropna()
-    data = df.copy()
+        return adx
 
-    high = data['High']
-    low = data['Low']
+    def calculate_aroon_oscillator(company, window):
+        df = pd.read_csv(f"data/data-day/{company}.csv")
+        df = df.dropna()
+        data = df.copy()
 
-    aroon_up = ((window - high.rolling(window).apply(np.argmax)) / window) * 100
-    aroon_down = ((window - low.rolling(window).apply(np.argmin)) / window) * 100
+        high = data['High']
+        low = data['Low']
 
-    aroon_oscillator = aroon_up - aroon_down
+        aroon_up = ((window - high.rolling(window).apply(np.argmax)) / window) * 100
+        aroon_down = ((window - low.rolling(window).apply(np.argmin)) / window) * 100
 
-    return aroon_oscillator
+        aroon_oscillator = aroon_up - aroon_down
 
-def calculate_stochastic_oscillator(company, window):
-    df = pd.read_csv(f"data/data-week/{company}-week.csv")
-    df = df.dropna()
-    data = df.copy()
+        return aroon_oscillator
 
-    high = data['High']
-    low = data['Low']
-    close = data['Adj Close']
+    def calculate_stochastic_oscillator(company, window):
+        df = pd.read_csv(f"data/data-day/{company}.csv")
+        df = df.dropna()
+        data = df.copy()
 
-    highest_high = high.rolling(window).max()
-    lowest_low = low.rolling(window).min()
+        high = data['High']
+        low = data['Low']
+        close = data['Adj Close']
 
-    k = 100 * ((close - lowest_low) / (highest_high - lowest_low))
-    d = k.rolling(3).mean()
+        highest_high = high.rolling(window).max()
+        lowest_low = low.rolling(window).min()
 
-    return k, d
+        k = 100 * ((close - lowest_low) / (highest_high - lowest_low))
+        d = k.rolling(3).mean()
 
-def calculate_rsi(data, window):
-    delta = data.diff()
-    up, down = delta.copy(), delta.copy()
-    up[up < 0] = 0
-    down[down > 0] = 0
+        return k, d
 
-    average_gain = up.rolling(window).mean()
-    average_loss = abs(down.rolling(window).mean())
+    def calculate_rsi(data, window):
+        delta = data.diff()
+        up, down = delta.copy(), delta.copy()
+        up[up < 0] = 0
+        down[down > 0] = 0
 
-    rs = average_gain / average_loss
-    rsi = 100 - (100 / (1 + rs))
+        average_gain = up.rolling(window).mean()
+        average_loss = abs(down.rolling(window).mean())
 
-    return rsi
+        rs = average_gain / average_loss
+        rsi = 100 - (100 / (1 + rs))
 
-def calculate_macd(data, short_window, long_window):
-    short_ema = data.ewm(span=short_window, adjust=False).mean()
-    long_ema = data.ewm(span=long_window, adjust=False).mean()
+        return rsi
 
-    macd_line = short_ema - long_ema
-    signal_line = macd_line.ewm(span=9, adjust=False).mean()
+    def calculate_macd(data, short_window, long_window):
+        short_ema = data.ewm(span=short_window, adjust=False).mean()
+        long_ema = data.ewm(span=long_window, adjust=False).mean()
 
-    return macd_line, signal_line
+        macd_line = short_ema - long_ema
+        signal_line = macd_line.ewm(span=9, adjust=False).mean()
+
+        return macd_line, signal_line
