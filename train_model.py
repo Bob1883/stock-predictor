@@ -25,11 +25,11 @@ from sklearn.preprocessing import OneHotEncoder
 # 4.x  Get somthing that makes the model archetecture automaticly, its called hyperparameter tuning i think
 # 5.x           Make sure that the parameters are separated this time, so that the model knows what is what
 # 6.x       Find a way so that the model knows what company it is, so that it can predict the right company
-# 7.                                Add indicators to the model, like RSI, MACD, Bollinger Bands, and so on
-# 8.                                 Add the other data and see if it improves the model, if not, remove it
-# 9.x                  Try to add the comodity data, its to much right know so i need to find a work around
-# 10.                                             Do some backtesting, find the best strategy for the model
-# 11.x          Make a program that checks what comoditeis are the closest to the change in the stock price
+# 7.x                  Try to add the comodity data, its to much right know so i need to find a work around
+# 8.x          Make a program that checks what comoditeis are the closest to the change in the stock price
+# 9.                                Add indicators to the model, like RSI, MACD, Bollinger Bands, and so on
+# 10.                                 Add the other data and see if it improves the model, if not, remove it
+# 11.                                             Do some backtesting, find the best strategy for the model
 # 12.                                                            Dubble check price thing it might be wrong 
 # 13.                                                                           Change get data to be a def
 
@@ -53,8 +53,8 @@ def build_model(hp):
     input_news = Input(shape=(X_news.shape[1], 1))
     input_name = Input(shape=(1,))
 
-    lstm_prices = LSTM(hp.Int('units_prices', min_value=32, max_value=512, step=32))(input_prices)
-    lstm_news = LSTM(hp.Int('units_news', min_value=32, max_value=512, step=32))(input_news)
+    lstm_prices = LSTM(hp.Int('units_prices', min_value=32, max_value=1024, step=64))(input_prices)
+    lstm_news = LSTM(hp.Int('units_news', min_value=32, max_value=1024, step=64))(input_news)
     lstm_name = layers.Flatten()(input_name)    
 
     concatenated = concatenate([lstm_prices, lstm_news, lstm_name])
