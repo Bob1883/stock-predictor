@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 class Indicators:
-    def calculate_obv(company):
+    def calculate_obv(self, company):
         df = pd.read_csv(f"data/data-day/{company}.csv")
         df = df.dropna()
         price = df['Adj Close']
@@ -21,7 +21,7 @@ class Indicators:
 
         return pd.Series(obv_values, index=price.index)
 
-    def calculate_ad_line(company):
+    def calculate_ad_line(self, company):
         df = pd.read_csv(f"data/data-day/{company}.csv")
         df = df.dropna()
         data = df.copy()
@@ -30,7 +30,7 @@ class Indicators:
 
         return ad_values
 
-    def calculate_adx(company, window):
+    def calculate_adx(self, company, window):
         df = pd.read_csv(f"data/data-day/{company}.csv")
         df = df.dropna()
         data = df.copy()
@@ -55,7 +55,7 @@ class Indicators:
 
         return adx
 
-    def calculate_aroon_oscillator(company, window):
+    def calculate_aroon_oscillator(self, company, window):
         df = pd.read_csv(f"data/data-day/{company}.csv")
         df = df.dropna()
         data = df.copy()
@@ -70,7 +70,7 @@ class Indicators:
 
         return aroon_oscillator
 
-    def calculate_stochastic_oscillator(company, window):
+    def calculate_stochastic_oscillator(self, company, window):
         df = pd.read_csv(f"data/data-day/{company}.csv")
         df = df.dropna()
         data = df.copy()
@@ -87,7 +87,7 @@ class Indicators:
 
         return k, d
 
-    def calculate_rsi(data, window):
+    def calculate_rsi(self, data, window):
         delta = data.diff()
         up, down = delta.copy(), delta.copy()
         up[up < 0] = 0
@@ -101,7 +101,7 @@ class Indicators:
 
         return rsi
 
-    def calculate_macd(data, short_window, long_window):
+    def calculate_macd(self, data, short_window, long_window):
         short_ema = data.ewm(span=short_window, adjust=False).mean()
         long_ema = data.ewm(span=long_window, adjust=False).mean()
 

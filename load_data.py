@@ -10,6 +10,136 @@ class Load_data():
         self.historical_data = []
         self.day_data = []
         self.news_data = []
+        self.google_trends_data = []
+
+    def load_google_trends(self):
+        for filename in os.listdir("data/google-trends"):
+            if filename.endswith(".json") and filename.split("-")[0].lower() == self.company:
+                with open(f"data/google-trends/{filename}") as f:
+                    json_data = json.load(f)
+                    scores = []
+                    dates = []
+                    for i in range(len(json_data)):
+                        dates.append(json_data[i][0])
+                        scores.append(json_data[i][1])
+
+                    self.google_trends_data = pd.DataFrame(scores, columns=['score'])
+
+                    # add dates to dataframe
+                    self.google_trends_data['Date'] = dates
+                    self.google_trends_data['Date'] = pd.to_datetime(self.google_trends_data['Date'])
+
+                    self.google_trends_data.reset_index(drop=True, inplace=True)
+                    self.google_trends_data = self.google_trends_data.iloc[-self.period:, :]
+                    self.google_trends_data.reset_index(drop=True, inplace=True)
+
+        return self.google_trends_data
+
+    def load_political_data(self):
+        for filename in os.listdir("data/political"):
+            if filename.endswith(".json") and filename.split("-")[0].lower() == self.company:
+                with open(f"data/political/{filename}") as f:
+                    json_data = json.load(f)["data"] 
+                    scores = []
+                    dates = []
+
+                    for i in range(len(json_data)):
+                        dates.append(json_data[i][0])
+                        scores.append(json_data[i][1])
+                    
+                    self.political_data = pd.DataFrame(scores, columns=['score'])
+
+                    # add dates to dataframe
+                    self.political_data['Date'] = dates
+                    self.political_data['Date'] = pd.to_datetime(self.political_data['Date'])
+
+                    self.political_data.reset_index(drop=True, inplace=True)
+                    self.political_data = self.political_data.iloc[::-1]
+                    self.political_data = self.political_data.iloc[-(self.period+14):, :]
+                    self.political_data.reset_index(drop=True, inplace=True)
+
+        return self.political_data
+
+    def load_world_data(self):  
+        pass 
+
+    def load_fundemental_data(self):
+        pass 
+
+    def find_best_commodity(self, companies): 
+        commodity_data = {}
+        best_commodies = {}
+
+        for commodity in os.listdir("data/commodity"):
+            # open json file
+            with open(f"data/commodity/{commodity}") as f:
+                data = json.load(f)
+
+            commodity_data[commodity] = []
+
+            for i in range(len(data["series"][0]["data"])): 
+                commodity_data[commodity].append(data["series"][0]["data"][i]["y"])
+
+            # there are missing values in the data, there are 7 day intervals. If a value is missing, take the average of the previous and next value
+            start_date = datetime.datetime.strptime(data["series"][0]["data"][0]["date"], '%Y-%m-%dT%H:%M:%S')
+            date = start_date
+            for i in range(len(data["series"][0]["data"])):
+                if data["series"][0]["data"][i]["date"] != date.strftime('%Y-%m-%dT%H:%M:%S'):
+                    commodity_data[commodity].insert(i, (commodity_data[commodity][i-1] + commodity_data[commodity][i]) / 2)
+                date = date + datetime.timedelta(days=7)
+
+            # keep only self.period values
+            commodity_data[commodity] = commodity_data[commodity][-self.period:]
+
+        for company in companies:
+            # loading bar 
+            percent = round(((companies.index(company) / len(companies)) * 100) + 1)
+            printProgressBar(percent, 100, length = 50)
+
+            df = pd.read_csv(f"data/data-day/{company}.csv")
+            df = df.dropna()
+            data = df.copy()
+
+            prices = data['Adj Close'].values   
+
+            prices = [np.mean(prices[i:i+30]) for i in range(0, len(prices), 30)]
+
+            best_commodies[company] = {}
+            diffs = {}
+
+            for commodity in commodity_data:    
+                for commodity in commodity_data:
+                    commodity_prices = commodity_data[commodity]
+
+                    # make sure the price data is the same length
+                    if len(prices) > len(commodity_prices):
+                        prices = prices[:len(commodity_prices)]
+                    else:
+                        commodity_prices = commodity_prices[:len(prices)]
+
+                    # scale the prices
+                    scaler = MinMaxScaler()
+                    prices_scaled = scaler.fit_transform(np.array(prices).reshape(-1, 1)).flatten()
+                    commodity_prices_scaled = scaler.transform(np.array(commodity_prices).reshape(-1, 1)).flatten()
+
+                    # scale the prices
+                    scaler = MinMaxScaler()
+                    prices_scaled = scaler.fit_transform(np.array(prices).reshape(-1, 1)).flatten()
+                    commodity_prices_scaled = scaler.transform(np.array(commodity_prices).reshape(-1, 1)).flatten()
+
+                    # calculate the diff
+                    diff = 0
+                    for i in range(len(prices_scaled)):
+                        diff += abs(prices_scaled[i] - commodity_prices_scaled[i])
+
+                    diffs[commodity] = diff
+                
+            best_commodies[company] = sorted(diffs, key=diffs.get)[:3]
+ 
+            for commodity in range(len(best_commodies[company])):
+                best_commodies[company][commodity] = commodity_data[best_commodies[company][commodity]] 
+
+        return best_commodies
 
     def load_historical(self): 
         for filename in os.listdir("data/data-week"):
@@ -122,3 +252,7 @@ class Load_data():
         data.reset_index(drop=True, inplace=True)
         
         return data
+
+# loader = Load_data(period = 100, company = "tesla")
+# data = loader.load_political_data()
+# print(data)

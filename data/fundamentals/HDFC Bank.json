@@ -1,0 +1,49 @@
+{
+    "currency": "USD",
+    "company_info": {
+        "cik": "811809",
+        "ticker": "BHP",
+        "name": "BHP GROUP LIMITED"
+    },
+    "financial_data": {
+        "quarterly": {
+            "revenue": {},
+            "cost_of_revenue": {},
+            "gross_profit": {},
+            "operating_income": {},
+            "total_assets": {},
+            "total_current_assets": {},
+            "prepaid_expenses": {},
+            "property_plant_and_equipment_net": {},
+            "retained_earnings": {},
+            "other_assets_noncurrent": {},
+            "total_liabilities": {},
+            "shareholder_equity": {},
+            "net_income": {},
+            "shares_outstanding_diluted": {},
+            "shares_outstanding_basic": {},
+            "eps_diluted": {},
+            "eps_basic": {},
+            "operating_cash_flow": {},
+            "investing_cash_flow": {},
+            "financing_cash_flow": {},
+            "research_development_expense": {},
+            "selling_general_administrative_expense": {},
+            "operating_expenses": {},
+            "non_operating_income": {},
+            "pre_tax_income": {},
+            "income_tax": {},
+            "depreciation_amortization": {},
+            "stock_based_compensation": {},
+            "dividends_paid": {},
+            "cash_on_hand": {},
+            "current_net_receivables": {},
+            "inventory": {},
+            "total_current_liabilities": {},
+            "total_non_current_liabilities": {},
+            "long_term_debt": {},
+            "goodwill": {},
+            "intangible_assets_excluding_goodwill": {}
+        }
+    }
+}

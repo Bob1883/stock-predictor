@@ -1,0 +1,66 @@
+{
+    "currency": "USD",
+    "company_info": {
+        "cik": "353278",
+        "ticker": "NVO",
+        "name": "NOVO NORDISK AS"
+    },
+    "financial_data": {
+        "quarterly": {
+            "revenue": {},
+            "cost_of_revenue": {},
+            "gross_profit": {},
+            "operating_income": {},
+            "total_assets": {
+                "2015Q4": 91799000000,
+                "2016Q4": 97539000000,
+                "2017Q4": 102355000000,
+                "2018Q4": 110769000000,
+                "2019Q4": 125612000000,
+                "2020Q4": 144922000000,
+                "2021Q4": 194508000000,
+                "2022Q4": 241257000000
+            },
+            "total_current_assets": {},
+            "prepaid_expenses": {},
+            "property_plant_and_equipment_net": {},
+            "retained_earnings": {},
+            "other_assets_noncurrent": {},
+            "total_liabilities": {
+                "2016Q4": 52270000000,
+                "2017Q4": 52540000000,
+                "2018Q4": 58930000000,
+                "2019Q4": 68019000000,
+                "2020Q4": 81597000000,
+                "2021Q4": 123762000000,
+                "2022Q4": 157771000000
+            },
+            "shareholder_equity": {},
+            "net_income": {},
+            "shares_outstanding_diluted": {},
+            "shares_outstanding_basic": {},
+            "eps_diluted": {},
+            "eps_basic": {},
+            "operating_cash_flow": {},
+            "investing_cash_flow": {},
+            "financing_cash_flow": {},
+            "research_development_expense": {},
+            "selling_general_administrative_expense": {},
+            "operating_expenses": {},
+            "non_operating_income": {},
+            "pre_tax_income": {},
+            "income_tax": {},
+            "depreciation_amortization": {},
+            "stock_based_compensation": {},
+            "dividends_paid": {},
+            "cash_on_hand": {},
+            "current_net_receivables": {},
+            "inventory": {},
+            "total_current_liabilities": {},
+            "total_non_current_liabilities": {},
+            "long_term_debt": {},
+            "goodwill": {},
+            "intangible_assets_excluding_goodwill": {}
+        }
+    }
+}

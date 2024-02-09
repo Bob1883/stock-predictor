@@ -12,26 +12,33 @@ from keras import layers
 import tensorflow as tf
 from tensorflow import keras
 
+tf.get_logger().setLevel('INFO')
+
 from keras_tuner import RandomSearch
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import OneHotEncoder
 
-# TODO
-# 1.x                                               Load in day data and use it when training, 20 days back
-# 2.x                                 rewrite change, becuse now the price data is of, use day data instead
-# 3.x                Fix the scaler better so every parameter is scaled correctly, and not scal all at ones 
-# 4.x  Get somthing that makes the model archetecture automaticly, its called hyperparameter tuning i think
-# 5.x           Make sure that the parameters are separated this time, so that the model knows what is what
-# 6.x       Find a way so that the model knows what company it is, so that it can predict the right company
-# 7.x                  Try to add the comodity data, its to much right know so i need to find a work around
-# 8.x          Make a program that checks what comoditeis are the closest to the change in the stock price
-# 9.                                Add indicators to the model, like RSI, MACD, Bollinger Bands, and so on
-# 10.                                 Add the other data and see if it improves the model, if not, remove it
-# 11.                                             Do some backtesting, find the best strategy for the model
-# 12.                                                            Dubble check price thing it might be wrong 
-# 13.                                                                           Change get data to be a def
+# DONE                                               TODO                                                   DOING
+#█ x █                                              Load in day data and use it when training, 20 days back █   █
+#█ x █                                rewrite change, becuse now the price data is of, use day data instead █   █
+#█ x █               Fix the scaler better so every parameter is scaled correctly, and not scal all at ones █   █
+#█ x █ Get somthing that makes the model archetecture automaticly, its called hyperparameter tuning i think █   █
+#█ x █          Make sure that the parameters are separated this time, so that the model knows what is what █   █
+#█ x █      Find a way so that the model knows what company it is, so that it can predict the right company █   █
+#█ x █                 Try to add the comodity data, its to much right know so i need to find a work around █   █
+#█ x █          Make a program that checks what comoditeis are the closest to the change in the stock price █   █
+#█   █                              Add indicators to the model, like RSI, MACD, Bollinger Bands, and so on █ x █    
+#█   █                               Add the other data and see if it improves the model, if not, remove it █   █
+#█   █                                            Do some backtesting, find the best strategy for the model █   █
+#█   █                                             Dubble check price and commodity thing it might be wrong █ x █
+#█   █                                                                          Change get data to be a def █ x █
+#█ x █                                      Add stock fundamentals, i dont really know where but i will try █   █
+#█   █                                                      If total falure is achieved, pick a stock strat █   █
+#█   █                                                                                 Check the world data █ x █
+#█   █                                                            Check with companies the model is best at █   █
+#█ x █                                                                                 Fix data looding bug █   █    
 
 companies = []
 
@@ -73,8 +80,7 @@ def build_model(hp):
 print("\nLoading data...")
 for company in companies:
     if company != test_stock:
-        # print out a looding bar, that moves to show how many percent are done
-        percent = round((companies.index(company) / len(companies)) * 100)
+        percent = round(((companies.index(company) / len(companies)) * 100) + 1)
         printProgressBar(percent, 100, length = 50)
 
         loader = Load_data(period=259, company=company.lower())
@@ -158,7 +164,8 @@ X_indecaters = []
 
 y_changes = []
 
-best_commodities = find_best_commodity(companies)
+print("\n\nFinding best commodities...")
+best_commodities = loader.find_best_commodity(companies)
 
 for company in data:
     name = encoder.fit_transform([[company]])
@@ -170,10 +177,12 @@ for company in data:
 
     X_commodity.append(best_commodities[company])
 
+# print(X_commodity)
+
 X_prices = np.array(X_prices)
 X_news = np.array(X_news)
 X_commodity = np.array(X_commodity)
-X_name = np.array(X_name)   
+X_name = np.array(X_name)
 
 y_changes = np.array(y_changes)
 
@@ -200,15 +209,13 @@ tuner = RandomSearch(
     project_name='stock-predictor' # The name of the project, used in the directory to separate different projects
     )
 
-tuner.search_space_summary()
-
 tuner.search(
     [X_prices_train, X_news_train, X_name_train], 
     y_train,
     epochs=50,
     batch_size=16,
     validation_data=([X_prices_test, X_news_test, X_name_test], y_test),
-    verbose=1
+    verbose=2,
 )
 
 tuner.results_summary()

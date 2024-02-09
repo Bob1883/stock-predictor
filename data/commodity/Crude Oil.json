@@ -10,13 +10,6 @@
             "full_name": "Crude Oil WTI",
             "data": [
                 {
-                    "date": "2018-10-14T00:00:00",
-                    "x": 1539475200000,
-                    "y": 72.3461,
-                    "percentChange": null,
-                    "change": null
-                },
-                {
                     "date": "2018-10-15T00:00:00",
                     "x": 1539561600000,
                     "y": 69.317,
