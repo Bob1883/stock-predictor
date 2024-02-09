@@ -29,7 +29,7 @@ from sklearn.preprocessing import OneHotEncoder
 #█ x █      Find a way so that the model knows what company it is, so that it can predict the right company █   █
 #█ x █                 Try to add the comodity data, its to much right know so i need to find a work around █   █
 #█ x █          Make a program that checks what comoditeis are the closest to the change in the stock price █   █
-#█   █                              Add indicators to the model, like RSI, MACD, Bollinger Bands, and so on █ x █    
+#█ x █                              Add indicators to the model, like RSI, MACD, Bollinger Bands, and so on █   █    
 #█   █                               Add the other data and see if it improves the model, if not, remove it █   █
 #█   █                                            Do some backtesting, find the best strategy for the model █   █
 #█   █                                             Dubble check price and commodity thing it might be wrong █ x █
@@ -46,6 +46,7 @@ n_past = 20    # Number of past days we want to use to predict the future.
 n_future = 1   # Number of days we want to predict into the future.
 
 data = {}
+indicators = []
 test_stock = "tesla"   
 
 for filename in os.listdir("./data/data-week"):
@@ -54,6 +55,7 @@ for filename in os.listdir("./data/data-week"):
         companies.append(company_name)
 
 encoder = OneHotEncoder(sparse=False)
+indicator = Indicators()
 
 def build_model(hp):
     input_prices = Input(shape=(X_prices.shape[1], X_prices.shape[2]))
@@ -101,7 +103,6 @@ for company in companies:
             price = []
 
             current_date = pd.to_datetime(company_data['Date'][date])
-            # print(current_date)
 
             for index in range(n_past):
                 try:
@@ -117,8 +118,6 @@ for company in companies:
                             price.append(0)
             
             prices.append(price)
-
-        # print(prices)
 
         for date in range(len(prices)):
             current_date = pd.to_datetime(company_data['Date'][date])
@@ -148,6 +147,9 @@ for company in companies:
                         changes.append(1)
                 else:
                     changes.append(0)
+
+            # add indicators, to the same spand 
+            indicators.append(indicator.get_indicators(company, (current_date - pd.DateOffset(days=n_past)).strftime('%Y-%m-%d'), current_date.strftime('%Y-%m-%d')))
                 
         data[company]['prices'] = prices
         data[company]['changes'] = changes
@@ -177,8 +179,6 @@ for company in data:
 
     X_commodity.append(best_commodities[company])
 
-# print(X_commodity)
-
 X_prices = np.array(X_prices)
 X_news = np.array(X_news)
 X_commodity = np.array(X_commodity)
@@ -194,11 +194,11 @@ if len(X_news.shape) < 2:
 
 X_news_reshaped = X_news.reshape(X_news.shape[0], X_news.shape[1], 1)
 
-# Check the shape of X_prices
 if len(X_prices.shape) < 3:
     X_prices = np.expand_dims(X_prices, axis=2)
 
 X_prices_train, X_prices_test, X_news_train, X_news_test, X_name_train, X_name_test, y_train, y_test = train_test_split(X_prices, X_news_reshaped, X_name, y_changes, test_size=0.2, random_state=42)
+
 
 tuner = RandomSearch(
     build_model,
@@ -207,8 +207,9 @@ tuner = RandomSearch(
     executions_per_trial=3,        # The number of models that should be tested in each round
     directory='models',            # The directory where the models should be saved
     project_name='stock-predictor' # The name of the project, used in the directory to separate different projects
-    )
+)
 
+print("\n\nTraining model...")
 tuner.search(
     [X_prices_train, X_news_train, X_name_train], 
     y_train,
@@ -224,79 +225,84 @@ model = tuner.get_best_models(num_models=1)[0]
 
 model.summary()
 
+
+
+
+
+
 #
 # TEST
 #
-tesla_loader = Load_data(period=259, company=test_stock)
-tesla_data = tesla_loader.get_raw_data()
-tesla_day_data = tesla_loader.load_day_data()
+# tesla_loader = Load_data(period=259, company=test_stock)
+# tesla_data = tesla_loader.get_raw_data()
+# tesla_day_data = tesla_loader.load_day_data()
 
-tesla_prices = []
-tesla_changes = []
-tesla_news = tesla_data['score'].values.tolist()
+# tesla_prices = []
+# tesla_changes = []
+# tesla_news = tesla_data['score'].values.tolist()
 
-for date in range(len(tesla_data['Date'])):
-    price = []
-    current_date = pd.to_datetime(tesla_data['Date'][date])
-    for index in range(n_past):
-        try:
-            past_date = current_date - pd.DateOffset(days=n_past - index)
-            price.append(tesla_day_data[tesla_day_data['Date'] == past_date]['Adj Close'].values[0].round(2))
-        except Exception as e:
-            if len(price) > 0:
-                price.append(price[-1])
-            else:
-                if len(tesla_prices) > 0:
-                    price.append(tesla_prices[-1][-1])
-                else:
-                    price.append(0)
-    tesla_prices.append(price)
+# for date in range(len(tesla_data['Date'])):
+#     price = []
+#     current_date = pd.to_datetime(tesla_data['Date'][date])
+#     for index in range(n_past):
+#         try:
+#             past_date = current_date - pd.DateOffset(days=n_past - index)
+#             price.append(tesla_day_data[tesla_day_data['Date'] == past_date]['Adj Close'].values[0].round(2))
+#         except Exception as e:
+#             if len(price) > 0:
+#                 price.append(price[-1])
+#             else:
+#                 if len(tesla_prices) > 0:
+#                     price.append(tesla_prices[-1][-1])
+#                 else:
+#                     price.append(0)
+#     tesla_prices.append(price)
 
-for date in range(len(tesla_prices)):
-    current_date = pd.to_datetime(tesla_data['Date'][date])
-    future_date = current_date + pd.DateOffset(days=n_future)
+# for date in range(len(tesla_prices)):
+#     current_date = pd.to_datetime(tesla_data['Date'][date])
+#     future_date = current_date + pd.DateOffset(days=n_future)
 
-    dates = [str(date).split("T")[0] for date in tesla_day_data['Date'].values]
+#     dates = [str(date).split("T")[0] for date in tesla_day_data['Date'].values]
     
-    if str(future_date).split(" ")[0] in dates:
-        future_price = tesla_day_data[tesla_day_data['Date'] == future_date]['Adj Close'].values[0]
-        change = ((future_price / tesla_prices[date][-1]) - 1)
-        if change < 0:
-            tesla_changes.append(-1)
-        else:
-            tesla_changes.append(1)
-    else:
-        current_date = pd.to_datetime(tesla_data['Date'][date])
-        future_date = current_date + pd.DateOffset(days=n_future+2)
+#     if str(future_date).split(" ")[0] in dates:
+#         future_price = tesla_day_data[tesla_day_data['Date'] == future_date]['Adj Close'].values[0]
+#         change = ((future_price / tesla_prices[date][-1]) - 1)
+#         if change < 0:
+#             tesla_changes.append(-1)
+#         else:
+#             tesla_changes.append(1)
+#     else:
+#         current_date = pd.to_datetime(tesla_data['Date'][date])
+#         future_date = current_date + pd.DateOffset(days=n_future+2)
 
-        dates = [str(date).split("T")[0] for date in tesla_day_data['Date'].values]
+#         dates = [str(date).split("T")[0] for date in tesla_day_data['Date'].values]
         
-        if str(future_date).split(" ")[0] in dates:
-            future_price = tesla_day_data[tesla_day_data['Date'] == future_date]['Adj Close'].values[0]
-            change = ((future_price / tesla_prices[date][-1]) - 1)
-            if change < 0:
-                tesla_changes.append(-1)
-            else:
-                tesla_changes.append(1)
-        else:
-            tesla_changes.append(0)
+#         if str(future_date).split(" ")[0] in dates:
+#             future_price = tesla_day_data[tesla_day_data['Date'] == future_date]['Adj Close'].values[0]
+#             change = ((future_price / tesla_prices[date][-1]) - 1)
+#             if change < 0:
+#                 tesla_changes.append(-1)
+#             else:
+#                 tesla_changes.append(1)
+#         else:
+#             tesla_changes.append(0)
 
-tesla_prices = np.array(tesla_prices)
-tesla_news = np.array(tesla_news)
+# tesla_prices = np.array(tesla_prices)
+# tesla_news = np.array(tesla_news)
 
-tesla_prices_normalized = scaler_prices.transform(tesla_prices.reshape(-1, tesla_prices.shape[-1])).reshape(tesla_prices.shape)
+# tesla_prices_normalized = scaler_prices.transform(tesla_prices.reshape(-1, tesla_prices.shape[-1])).reshape(tesla_prices.shape)
 
-if len(tesla_news.shape) < 2:
-    tesla_news = np.expand_dims(tesla_news, axis=1)
+# if len(tesla_news.shape) < 2:
+#     tesla_news = np.expand_dims(tesla_news, axis=1)
 
-tesla_news_reshaped = tesla_news.reshape(tesla_news.shape[0], tesla_news.shape[1], 1)
+# tesla_news_reshaped = tesla_news.reshape(tesla_news.shape[0], tesla_news.shape[1], 1)
 
-if len(tesla_prices.shape) < 3:
-    tesla_prices = np.expand_dims(tesla_prices, axis=2)
+# if len(tesla_prices.shape) < 3:
+#     tesla_prices = np.expand_dims(tesla_prices, axis=2)
 
-tesla_predictions = model.predict([tesla_prices, tesla_news_reshaped])
+# tesla_predictions = model.predict([tesla_prices, tesla_news_reshaped])
 
-plt.plot(tesla_changes, label='Actual Changes')
-plt.plot(tesla_predictions, label='Predicted Changes')
-plt.legend()
-plt.show()
+# plt.plot(tesla_changes, label='Actual Changes')
+# plt.plot(tesla_predictions, label='Predicted Changes')
+# plt.legend()
+# plt.show()
