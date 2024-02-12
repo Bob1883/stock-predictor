@@ -61,7 +61,27 @@ class Load_data():
         return self.political_data
 
     def load_world_data(self):  
-        pass 
+        for filename in os.listdir("data/data-world"):
+            if filename.endswith(".xls"):
+                df = pd.read_excel(f"data/data-world/{filename}")
+                df = df.iloc[1]
+                df = df[2:]
+                df = df.values.tolist()
+                df = df[:-5]
+                df = df[-6:]
+                week_data = []
+                for i in range(12):
+                    week_data.append(df[0])
+                for i in range(1, len(df)-1):
+                    for j in range(52):
+                        week_data.append(df[i])
+                for i in range(41):
+                    week_data.append(df[-1])
+                if len(week_data) > self.period:
+                    week_data = week_data[len(week_data) - self.period:]
+                self.world_economy_data.append(pd.DataFrame(week_data, columns=[filename.split(".")[0]]))
+
+        return self.world_economy_data 
 
     def load_fundemental_data(self):
         pass 
@@ -94,7 +114,7 @@ class Load_data():
         for company in companies:
             # loading bar 
             percent = round(((companies.index(company) / len(companies)) * 100) + 1)
-            printProgressBar(percent, 100, length = 50)
+            printProgressBar(percent, 100, length = 50, description="Finding best commodities...")
 
             df = pd.read_csv(f"data/data-day/{company}.csv")
             df = df.dropna()

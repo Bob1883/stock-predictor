@@ -49,7 +49,7 @@ executions_per_trial = 3
 data = {}
 companies = []
 indicators = []
-test_stock = "tesla"   
+test_stock = "Tesla"   
 
 ####### 
 # API #
@@ -69,7 +69,10 @@ test_stock = "tesla"
 ###############
 # FOR LOOGING #
 ###############
-def printProgressBar(iteration, total, decimals = 1, length = 100, fill = '█'):
+def printProgressBar(iteration, total, decimals = 1, length = 100, fill = '█', description = 'Progress: '):
+    time.sleep(0.1)
+    os.system('cls' if os.name == 'nt' else 'clear')
+    print(description)
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + '-' * (length - filledLength)
@@ -84,4 +87,4 @@ class CustomCallback(keras.callbacks.Callback):
         global rounds
         if epoch % 50 == 0:
             rounds += 1
-        printProgressBar(rounds, max_trials*executions_per_trial, length=50)
+        printProgressBar(rounds, max_trials*executions_per_trial, length=50, description="Training model...")

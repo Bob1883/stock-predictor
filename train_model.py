@@ -14,7 +14,7 @@ from dependencies import *
 #█ x █                                                                          Change get data to be a def █   █
 #█ x █                                      Add stock fundamentals, i dont really know where but i will try █   █
 #█ x █                                                                 Add the looding bar for the training █   █
-#█   █                                                                                 Check the world data █ x █
+#█ x █                                                                                 Check the world data █   █
 #█   █                                                                               Add stock fundamentals █ x █
 #█   █                               Add the other data and see if it improves the model, if not, remove it █   █
 #█   █                                            Do some backtesting, find the best strategy for the model █   █
@@ -28,10 +28,11 @@ for filename in os.listdir("./data/data-week"):
     if os.path.isfile(f"data/data-day/{company_name}.csv"):
         companies.append(company_name)
 
-print("\nLoading data...")
-data, indicators = preprocessing(companies, test_stock, exclude=[])
+companies = companies[:2]
+companies.append(test_stock)
 
-print("\n\nFinding best commodities...")
+data, indicators, test_data, test_indicators = preprocessing(companies, test_stock, exclude=[])
+
 best_commodities = loader.find_best_commodity(companies)
 
 for company in data:
@@ -92,10 +93,9 @@ tuner = RandomSearch(
     max_trials=max_trials,                    # The numbers of rounds to test
     executions_per_trial=executions_per_trial,# The number of models that should be tested in each round
     directory='models',                       # The directory where the models should be saved
-    project_name=f'stock-predictor{len([name for name in os.listdir('models') if os.path.isdir(os.path.join('models', name))])}'
+    project_name=f'stock-predictor1'
 )
 
-print("\n\nTraining model...")
 tuner.search(
     [X_prices_train, X_news_train, X_name_train], 
     y_train,
@@ -106,7 +106,7 @@ tuner.search(
     callbacks=[CustomCallback()],
 )
 
-tuner.results_summary()
+# tuner.results_summary()
 
 model = tuner.get_best_models(num_models=1)[0]
 
@@ -115,3 +115,49 @@ model.summary()
 #
 # TEST
 #
+test_prices = []
+test_news = []
+test_name = []
+
+test_change = []
+
+# test_stock = "Tesla"
+encoder = OneHotEncoder(sparse_output=False)
+name = encoder.fit_transform([[test_stock]])
+
+for i in range(n_past, len(test_data[test_stock]['prices'])):
+    test_name.append(name)
+    test_prices.append(test_data[test_stock]['prices'][i])
+    test_news.append(test_data[test_stock]['news'][i])
+
+    test_change.append(test_data[test_stock]['changes'][i])
+
+test_prices = np.array(test_prices)
+test_news = np.array(test_news)
+test_name = np.array(test_name)
+
+test_change = np.array(test_change)
+
+# Normalize the test prices
+test_prices_normalized = scaler_prices.transform(test_prices.reshape(-1, test_prices.shape[-1])).reshape(test_prices.shape)
+
+# Reshape the test news
+if len(test_news.shape) < 2:
+    test_news = np.expand_dims(test_news, axis=1)
+
+test_news_reshaped = test_news.reshape(test_news.shape[0], test_news.shape[1], 1)
+
+# Predict the test set results
+y_pred = model.predict([test_prices_normalized, test_news_reshaped, test_name])
+
+# accuracy = clac_accuracy(test_change, y_pred)
+# print(accuracy*100, "%")
+
+# plt 
+plt.plot(test_change, color = 'red', label = 'Real')
+plt.plot(y_pred, color = 'blue', label = 'Predicted')
+plt.title('Stock Prediction')
+plt.xlabel('Time')
+plt.ylabel('Stock Price')
+plt.legend()
+plt.show()

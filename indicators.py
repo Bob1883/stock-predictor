@@ -3,6 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class Indicators:
+    """
+    This class is used to calculate the indicators for a given stock.
+    """
     def calculate_obv(self, company, start_date, end_date):
         df = pd.read_csv(f"data/data-week/{company}-week.csv")
         df = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
@@ -150,59 +153,54 @@ class Indicators:
 
         return (obv, ad_line, adx, aroon_oscillator, k, d, rsi, macd_line, signal_line)
     
-def test():
-    # Company and date parameters
-    company = "tesla"
-    start_date = "2023-01-01"
-    end_date = "2024-02-11"
-
-    # Create Indicators object
+def test_get_indicators():
     indicators = Indicators()
-
-    # Get indicators for Tesla
+    start_date = '2020-01-01'
+    end_date = '2021-12-31'
+    company = 'tesla'
+    
     obv, ad_line, adx, aroon_oscillator, k, d, rsi, macd_line, signal_line = indicators.get_indicators(company, start_date, end_date)
+    
+    # Plotting the indicators
+    plt.figure(figsize=(15,10))
 
-    # Load price data (optional, not used in this example)
-    df = pd.read_csv(f"data/data-week/{company}-week.csv")
-    dates = df['Date']
+    plt.subplot(3,3,1)
+    plt.plot(obv)
+    plt.title('OBV')
 
-    # Create subplots for visualization
-    fig, axs = plt.subplots(3, 2, figsize=(12, 12))
+    plt.subplot(3,3,2)
+    plt.plot(ad_line)
+    plt.title('AD Line')
 
-    # Plot OBV
-    axs[0, 0].plot(dates, obv)
-    axs[0, 0].set_title("On Balance Volume (OBV)")
+    plt.subplot(3,3,3)
+    plt.plot(adx)
+    plt.title('ADX')
 
-    # Plot AD Line
-    axs[0, 1].plot(dates, ad_line)
-    axs[0, 1].set_title("Accumulation Distribution (AD Line)")
+    plt.subplot(3,3,4)
+    plt.plot(aroon_oscillator)
+    plt.title('Aroon Oscillator')
 
-    # Plot ADX
-    axs[1, 0].plot(dates, adx)
-    axs[1, 0].set_title("Average Directional Index (ADX)")
+    plt.subplot(3,3,5)
+    plt.plot(k)
+    plt.title('Stochastic Oscillator K')
 
-    # Plot Aroon Oscillator
-    axs[1, 1].plot(dates, aroon_oscillator)
-    axs[1, 1].set_title("Aroon Oscillator")
+    plt.subplot(3,3,6)
+    plt.plot(d)
+    plt.title('Stochastic Oscillator D')
 
-    # Plot Stochastic Oscillator
-    axs[2, 0].plot(dates, k, label="K")
-    axs[2, 0].plot(dates, d, label="D")
-    axs[2, 0].legend()
-    axs[2, 0].set_title("Stochastic Oscillator (K, D)")
+    plt.subplot(3,3,7)
+    plt.plot(rsi)
+    plt.title('RSI')
 
-    # Plot RSI
-    axs[2, 1].plot(dates, rsi)
-    axs[2, 1].set_title("Relative Strength Index (RSI)")
+    plt.subplot(3,3,8)
+    plt.plot(macd_line)
+    plt.title('MACD Line')
 
-    # You can add more plots for MACD and other indicators here
+    plt.subplot(3,3,9)
+    plt.plot(signal_line)
+    plt.title('Signal Line')
 
-    # Customize plot (labels, colors, etc.)
-    fig.suptitle(f"{company} Technical Indicators ({start_date} - {end_date})")
-    plt.xlabel("Date")
-    plt.xticks(rotation=45)  # Rotate x-axis labels for better readability
     plt.tight_layout()
     plt.show()
 
-if __name__ == "__main__":
-    test()
+# test_get_indicators()
