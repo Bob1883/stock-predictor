@@ -1,24 +1,4 @@
-from indicators import Indicators   
-from load_data import Load_data
-from constants import *
-
-# mute tensorflow warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
-from keras.models import Model
-from keras.layers import Input, LSTM, concatenate, Dense
-from keras import layers
-
-import tensorflow as tf
-from tensorflow import keras
-
-tf.get_logger().setLevel('INFO')
-
-from keras_tuner import RandomSearch
-
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.preprocessing import OneHotEncoder
+from dependencies import *
 
 # DONE                                               TODO                                                   DOING
 #█ x █                                              Load in day data and use it when training, 20 days back █   █
@@ -30,141 +10,28 @@ from sklearn.preprocessing import OneHotEncoder
 #█ x █                 Try to add the comodity data, its to much right know so i need to find a work around █   █
 #█ x █          Make a program that checks what comoditeis are the closest to the change in the stock price █   █
 #█ x █                              Add indicators to the model, like RSI, MACD, Bollinger Bands, and so on █   █    
+#█ x █                                                                                 Fix data looding bug █   █    
+#█ x █                                                                          Change get data to be a def █   █
+#█ x █                                      Add stock fundamentals, i dont really know where but i will try █   █
+#█   █                                             Dubble check price and commodity thing it might be wrong █ x █
+#█   █                                                                                 Check the world data █ x █
+#█   █                                                                               Add stock fundamentals █ x █
+#█   █                                                                 Add the looding bar for the training █ x █
 #█   █                               Add the other data and see if it improves the model, if not, remove it █   █
 #█   █                                            Do some backtesting, find the best strategy for the model █   █
-#█   █                                             Dubble check price and commodity thing it might be wrong █ x █
-#█   █                                                                          Change get data to be a def █ x █
-#█ x █                                      Add stock fundamentals, i dont really know where but i will try █   █
 #█   █                                                      If total falure is achieved, pick a stock strat █   █
-#█   █                                                                                 Check the world data █ x █
 #█   █                                                            Check with companies the model is best at █   █
-#█ x █                                                                                 Fix data looding bug █   █    
 
-companies = []
+# use the gpu
 
-n_past = 20    # Number of past days we want to use to predict the future.
-n_future = 1   # Number of days we want to predict into the future.
-
-data = {}
-indicators = []
-test_stock = "tesla"   
 
 for filename in os.listdir("./data/data-week"):
     company_name = filename.split("-")[0]
     if os.path.isfile(f"data/data-day/{company_name}.csv"):
         companies.append(company_name)
 
-encoder = OneHotEncoder(sparse=False)
-indicator = Indicators()
-
-def build_model(hp):
-    input_prices = Input(shape=(X_prices.shape[1], X_prices.shape[2]))
-    input_news = Input(shape=(X_news.shape[1], 1))
-    input_name = Input(shape=(1,))
-
-    lstm_prices = LSTM(hp.Int('units_prices', min_value=32, max_value=1024, step=64))(input_prices)
-    lstm_news = LSTM(hp.Int('units_news', min_value=32, max_value=1024, step=64))(input_news)
-    lstm_name = layers.Flatten()(input_name)    
-
-    concatenated = concatenate([lstm_prices, lstm_news, lstm_name])
-    output = Dense(2, activation='linear')(concatenated)
-
-    model = Model(inputs=[input_prices, input_news, input_name], outputs=output)
-
-    model.compile(
-        optimizer=keras.optimizers.Adam(
-            hp.Choice('learning_rate', values=[1e-2, 1e-3, 1e-4])),
-        loss='mse',
-        metrics=['mae'])
-
-    return model
-
 print("\nLoading data...")
-for company in companies:
-    if company != test_stock:
-        percent = round(((companies.index(company) / len(companies)) * 100) + 1)
-        printProgressBar(percent, 100, length = 50)
-
-        loader = Load_data(period=259, company=company.lower())
-
-        company_data = loader.get_raw_data()
-        day_data = loader.load_day_data()
-
-        data[company] = {}
-
-        average_change_down = []
-        average_change_up = []
-
-        prices = []
-        changes = []
-
-        for date in range(len(company_data['Date'])):
-
-            price = []
-
-            current_date = pd.to_datetime(company_data['Date'][date])
-
-            for index in range(n_past):
-                try:
-                    past_date = current_date - pd.DateOffset(days=n_past - index)
-                    price.append(day_data[day_data['Date'] == past_date]['Adj Close'].values[0].round(2))
-                except Exception as e:
-                    if len(price) > 0:
-                        price.append(price[-1])
-                    else:
-                        if len(prices) > 0:
-                            price.append(prices[-1][-1])
-                        else:
-                            price.append(0)
-            
-            prices.append(price)
-
-        for date in range(len(prices)):
-            current_date = pd.to_datetime(company_data['Date'][date])
-            future_date = current_date + pd.DateOffset(days=n_future)
-
-            dates = [str(date).split("T")[0] for date in day_data['Date'].values]
-            
-            if str(future_date).split(" ")[0] in dates:
-                future_price = day_data[day_data['Date'] == future_date]['Adj Close'].values[0]
-                change = ((future_price / prices[date][-1]) - 1)
-                if change < 0:
-                    changes.append(-1)
-                else:
-                    changes.append(1)
-            else:
-                current_date = pd.to_datetime(company_data['Date'][date])
-                future_date = current_date + pd.DateOffset(days=n_future+2)
-
-                dates = [str(date).split("T")[0] for date in day_data['Date'].values]
-                
-                if str(future_date).split(" ")[0] in dates:
-                    future_price = day_data[day_data['Date'] == future_date]['Adj Close'].values[0]
-                    change = ((future_price / prices[date][-1]) - 1)
-                    if change < 0:
-                        changes.append(-1)
-                    else:
-                        changes.append(1)
-                else:
-                    changes.append(0)
-
-            # add indicators, to the same spand 
-            indicators.append(indicator.get_indicators(company, (current_date - pd.DateOffset(days=n_past)).strftime('%Y-%m-%d'), current_date.strftime('%Y-%m-%d')))
-                
-        data[company]['prices'] = prices
-        data[company]['changes'] = changes
-        data[company]['news'] = company_data['score'].values.tolist()
-
-        # print(data)
-
-X_prices = []
-X_news = []
-X_commodity = []
-X_name = []
-
-X_indecaters = []
-
-y_changes = []
+data, indicators = preprocessing(companies, test_stock, exclude=[])
 
 print("\n\nFinding best commodities...")
 best_commodities = loader.find_best_commodity(companies)
@@ -199,14 +66,35 @@ if len(X_prices.shape) < 3:
 
 X_prices_train, X_prices_test, X_news_train, X_news_test, X_name_train, X_name_test, y_train, y_test = train_test_split(X_prices, X_news_reshaped, X_name, y_changes, test_size=0.2, random_state=42)
 
+def build_model(hp):
+    input_prices = Input(shape=(X_prices.shape[1], X_prices.shape[2]))
+    input_news = Input(shape=(X_news.shape[1], 1))
+    input_name = Input(shape=(1,))
+
+    lstm_prices = LSTM(hp.Int('units_prices', min_value=32, max_value=1024, step=64))(input_prices)
+    lstm_news = LSTM(hp.Int('units_news', min_value=32, max_value=1024, step=64))(input_news)
+    lstm_name = layers.Flatten()(input_name)    
+
+    concatenated = concatenate([lstm_prices, lstm_news, lstm_name])
+    output = Dense(2, activation='linear')(concatenated)
+
+    model = Model(inputs=[input_prices, input_news, input_name], outputs=output)
+
+    model.compile(
+        optimizer=keras.optimizers.Adam(
+            hp.Choice('learning_rate', values=[1e-2, 1e-3, 1e-4])),
+        loss='mse',
+        metrics=['mae'])
+
+    return model
 
 tuner = RandomSearch(
     build_model,
-    objective='val_mae',           # The metric that should be optimized
-    max_trials=10,                 # The numbers of rounds to test
-    executions_per_trial=3,        # The number of models that should be tested in each round
-    directory='models',            # The directory where the models should be saved
-    project_name='stock-predictor' # The name of the project, used in the directory to separate different projects
+    objective='val_mae',                      # The metric that should be optimized
+    max_trials=max_trials,                    # The numbers of rounds to test
+    executions_per_trial=executions_per_trial,# The number of models that should be tested in each round
+    directory='models',                       # The directory where the models should be saved
+    project_name='stock-predictor'            # The name of the project, used in the directory to separate different projects
 )
 
 print("\n\nTraining model...")
@@ -216,7 +104,8 @@ tuner.search(
     epochs=50,
     batch_size=16,
     validation_data=([X_prices_test, X_news_test, X_name_test], y_test),
-    verbose=2,
+    verbose=0, # 0 = silent, 1 = progress bar, 2 = one line per epoch
+    callbacks=[CustomCallback()],
 )
 
 tuner.results_summary()
@@ -225,84 +114,6 @@ model = tuner.get_best_models(num_models=1)[0]
 
 model.summary()
 
-
-
-
-
-
 #
 # TEST
 #
-# tesla_loader = Load_data(period=259, company=test_stock)
-# tesla_data = tesla_loader.get_raw_data()
-# tesla_day_data = tesla_loader.load_day_data()
-
-# tesla_prices = []
-# tesla_changes = []
-# tesla_news = tesla_data['score'].values.tolist()
-
-# for date in range(len(tesla_data['Date'])):
-#     price = []
-#     current_date = pd.to_datetime(tesla_data['Date'][date])
-#     for index in range(n_past):
-#         try:
-#             past_date = current_date - pd.DateOffset(days=n_past - index)
-#             price.append(tesla_day_data[tesla_day_data['Date'] == past_date]['Adj Close'].values[0].round(2))
-#         except Exception as e:
-#             if len(price) > 0:
-#                 price.append(price[-1])
-#             else:
-#                 if len(tesla_prices) > 0:
-#                     price.append(tesla_prices[-1][-1])
-#                 else:
-#                     price.append(0)
-#     tesla_prices.append(price)
-
-# for date in range(len(tesla_prices)):
-#     current_date = pd.to_datetime(tesla_data['Date'][date])
-#     future_date = current_date + pd.DateOffset(days=n_future)
-
-#     dates = [str(date).split("T")[0] for date in tesla_day_data['Date'].values]
-    
-#     if str(future_date).split(" ")[0] in dates:
-#         future_price = tesla_day_data[tesla_day_data['Date'] == future_date]['Adj Close'].values[0]
-#         change = ((future_price / tesla_prices[date][-1]) - 1)
-#         if change < 0:
-#             tesla_changes.append(-1)
-#         else:
-#             tesla_changes.append(1)
-#     else:
-#         current_date = pd.to_datetime(tesla_data['Date'][date])
-#         future_date = current_date + pd.DateOffset(days=n_future+2)
-
-#         dates = [str(date).split("T")[0] for date in tesla_day_data['Date'].values]
-        
-#         if str(future_date).split(" ")[0] in dates:
-#             future_price = tesla_day_data[tesla_day_data['Date'] == future_date]['Adj Close'].values[0]
-#             change = ((future_price / tesla_prices[date][-1]) - 1)
-#             if change < 0:
-#                 tesla_changes.append(-1)
-#             else:
-#                 tesla_changes.append(1)
-#         else:
-#             tesla_changes.append(0)
-
-# tesla_prices = np.array(tesla_prices)
-# tesla_news = np.array(tesla_news)
-
-# tesla_prices_normalized = scaler_prices.transform(tesla_prices.reshape(-1, tesla_prices.shape[-1])).reshape(tesla_prices.shape)
-
-# if len(tesla_news.shape) < 2:
-#     tesla_news = np.expand_dims(tesla_news, axis=1)
-
-# tesla_news_reshaped = tesla_news.reshape(tesla_news.shape[0], tesla_news.shape[1], 1)
-
-# if len(tesla_prices.shape) < 3:
-#     tesla_prices = np.expand_dims(tesla_prices, axis=2)
-
-# tesla_predictions = model.predict([tesla_prices, tesla_news_reshaped])
-
-# plt.plot(tesla_changes, label='Actual Changes')
-# plt.plot(tesla_predictions, label='Predicted Changes')
-# plt.legend()
-# plt.show()

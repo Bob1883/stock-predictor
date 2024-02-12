@@ -6,12 +6,13 @@ from json import loads, dumps
 from datetime import datetime, timedelta
 from matplotlib import pyplot as plt
 import pandas as pd
+import os 
 
 start_date = datetime(2023, 10, 14) - timedelta(days=365*5)
 end_date = datetime(2023, 10, 14)
 
-API_KEY = "PK9618UB7TK7LDWHY5SE" 
-API_SECRET = "OaXaMZnLfur2mKLII3K3ktKbaoO3RG2zPfTI1Xco" 
+API_KEY = os.getenv("ALPACA_KEY") 
+API_SECRET = os.getenv("ALPACA_SECRET")
 BASE_URL = "https://paper-api.alpaca.markets"
 
 client = StockHistoricalDataClient(API_KEY, API_SECRET)
