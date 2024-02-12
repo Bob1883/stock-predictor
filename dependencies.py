@@ -2,7 +2,6 @@ from indicators import Indicators
 from load_data import Load_data
 from constants import *
 
-encoder = OneHotEncoder(sparse_output=False)
 indicator = Indicators()
 loader = Load_data(period=259, company=test_stock) 
 

@@ -22,21 +22,26 @@ from dependencies import *
 #█   █                                                            Check with companies the model is best at █   █
 #█   █                               Add a algorithm to see what indicators are the best for AI backtesting █   █
 #█   █                                             Dubble check price and commodity thing it might be wrong █   █
+#█   █                                            There is somthing wrong with how we import the price data █   █
+#█   █                                                                     ALL THE DATA LOODING IS WRONG ): █   █
 
 for filename in os.listdir("./data/data-week"):
     company_name = filename.split("-")[0]
     if os.path.isfile(f"data/data-day/{company_name}.csv"):
         companies.append(company_name)
 
-companies = companies[:2]
+companies = companies[:1]
 companies.append(test_stock)
 
 data, indicators, test_data, test_indicators = preprocessing(companies, test_stock, exclude=[])
 
 best_commodities = loader.find_best_commodity(companies)
 
+company_to_int = {company: i for i, company in enumerate(companies)}
+
 for company in data:
-    name = encoder.fit_transform([[company]])
+    name = company_to_int[company]
+
     for i in range(n_past, len(data[company]['prices'])):
         X_name.append(name)
         X_prices.append(data[company]['prices'][i])
@@ -44,6 +49,18 @@ for company in data:
         y_changes.append(data[company]['changes'][i])
 
     X_commodity.append(best_commodities[company])
+
+print(y_changes)
+print(companies)
+# plt the first array for prices
+plt.plot(y_changes, color = 'red', label = 'Real')
+plt.title('Stock Prediction')
+plt.xlabel('Time')
+plt.ylabel('Stock Price')
+plt.legend()
+plt.show()
+
+int("crash")
 
 X_prices = np.array(X_prices)
 X_news = np.array(X_news)
@@ -87,6 +104,14 @@ def build_model(hp):
 
     return model
 
+# plt the first array for changes
+plt.plot(y_changes, color = 'red', label = 'Real')
+plt.title('Stock Prediction')
+plt.xlabel('Time')
+plt.ylabel('Stock Price')
+plt.legend()
+plt.show()
+
 tuner = RandomSearch(
     build_model,
     objective='val_mae',                      # The metric that should be optimized
@@ -122,8 +147,7 @@ test_name = []
 test_change = []
 
 # test_stock = "Tesla"
-encoder = OneHotEncoder(sparse_output=False)
-name = encoder.fit_transform([[test_stock]])
+name = company_to_int[test_stock]
 
 for i in range(n_past, len(test_data[test_stock]['prices'])):
     test_name.append(name)
