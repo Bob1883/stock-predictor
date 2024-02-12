@@ -13,17 +13,15 @@ from dependencies import *
 #█ x █                                                                                 Fix data looding bug █   █    
 #█ x █                                                                          Change get data to be a def █   █
 #█ x █                                      Add stock fundamentals, i dont really know where but i will try █   █
-#█   █                                             Dubble check price and commodity thing it might be wrong █ x █
+#█ x █                                                                 Add the looding bar for the training █   █
 #█   █                                                                                 Check the world data █ x █
 #█   █                                                                               Add stock fundamentals █ x █
-#█   █                                                                 Add the looding bar for the training █ x █
 #█   █                               Add the other data and see if it improves the model, if not, remove it █   █
 #█   █                                            Do some backtesting, find the best strategy for the model █   █
 #█   █                                                      If total falure is achieved, pick a stock strat █   █
 #█   █                                                            Check with companies the model is best at █   █
-
-# use the gpu
-
+#█   █                               Add a algorithm to see what indicators are the best for AI backtesting █   █
+#█   █                                             Dubble check price and commodity thing it might be wrong █   █
 
 for filename in os.listdir("./data/data-week"):
     company_name = filename.split("-")[0]
@@ -94,7 +92,7 @@ tuner = RandomSearch(
     max_trials=max_trials,                    # The numbers of rounds to test
     executions_per_trial=executions_per_trial,# The number of models that should be tested in each round
     directory='models',                       # The directory where the models should be saved
-    project_name='stock-predictor'            # The name of the project, used in the directory to separate different projects
+    project_name=f'stock-predictor{len([name for name in os.listdir('models') if os.path.isdir(os.path.join('models', name))])}'
 )
 
 print("\n\nTraining model...")

@@ -29,9 +29,9 @@ if tf.test.gpu_device_name():
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-#
-# SETTINGS
-# 
+############
+# SETTINGS #
+############
 X_prices = []
 X_news = []
 X_commodity = []
@@ -51,9 +51,9 @@ companies = []
 indicators = []
 test_stock = "tesla"   
 
-# 
-# API
-#  
+####### 
+# API #
+#######  
 # API_KEY = os.getenv("ALPACA_KEY")
 # API_SECRET = os.getenv("ALPACA_SECRET")
 # BASE_URL = "https://paper-api.alpaca.markets"
@@ -66,9 +66,9 @@ test_stock = "tesla"
 
 # api = REST(base_url=BASE_URL, key_id=API_KEY, secret_key=API_SECRET)
 
-# 
-# FOR LOOGING
-# 
+###############
+# FOR LOOGING #
+###############
 def printProgressBar(iteration, total, decimals = 1, length = 100, fill = '█'):
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)

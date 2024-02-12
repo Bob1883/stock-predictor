@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Indicators:
     def calculate_obv(self, company, start_date, end_date):
@@ -148,3 +149,60 @@ class Indicators:
         signal_line = signal_line.fillna(0).tolist()
 
         return (obv, ad_line, adx, aroon_oscillator, k, d, rsi, macd_line, signal_line)
+    
+def test():
+    # Company and date parameters
+    company = "tesla"
+    start_date = "2023-01-01"
+    end_date = "2024-02-11"
+
+    # Create Indicators object
+    indicators = Indicators()
+
+    # Get indicators for Tesla
+    obv, ad_line, adx, aroon_oscillator, k, d, rsi, macd_line, signal_line = indicators.get_indicators(company, start_date, end_date)
+
+    # Load price data (optional, not used in this example)
+    df = pd.read_csv(f"data/data-week/{company}-week.csv")
+    dates = df['Date']
+
+    # Create subplots for visualization
+    fig, axs = plt.subplots(3, 2, figsize=(12, 12))
+
+    # Plot OBV
+    axs[0, 0].plot(dates, obv)
+    axs[0, 0].set_title("On Balance Volume (OBV)")
+
+    # Plot AD Line
+    axs[0, 1].plot(dates, ad_line)
+    axs[0, 1].set_title("Accumulation Distribution (AD Line)")
+
+    # Plot ADX
+    axs[1, 0].plot(dates, adx)
+    axs[1, 0].set_title("Average Directional Index (ADX)")
+
+    # Plot Aroon Oscillator
+    axs[1, 1].plot(dates, aroon_oscillator)
+    axs[1, 1].set_title("Aroon Oscillator")
+
+    # Plot Stochastic Oscillator
+    axs[2, 0].plot(dates, k, label="K")
+    axs[2, 0].plot(dates, d, label="D")
+    axs[2, 0].legend()
+    axs[2, 0].set_title("Stochastic Oscillator (K, D)")
+
+    # Plot RSI
+    axs[2, 1].plot(dates, rsi)
+    axs[2, 1].set_title("Relative Strength Index (RSI)")
+
+    # You can add more plots for MACD and other indicators here
+
+    # Customize plot (labels, colors, etc.)
+    fig.suptitle(f"{company} Technical Indicators ({start_date} - {end_date})")
+    plt.xlabel("Date")
+    plt.xticks(rotation=45)  # Rotate x-axis labels for better readability
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    test()
