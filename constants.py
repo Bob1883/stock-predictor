@@ -6,6 +6,7 @@ import numpy as np
 import os
 import json
 import time
+import datetime
 
 import tensorflow as tf
 from tensorflow import keras
@@ -18,6 +19,12 @@ from keras_tuner import RandomSearch
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+
+from lumibot.brokers import Alpaca
+from lumibot.backtesting import YahooDataBacktesting
+from lumibot.strategies.strategy import Strategy
+from lumibot.traders import Trader
+
 
 
 # mute warnings
@@ -33,39 +40,36 @@ if tf.test.gpu_device_name():
 ############
 # SETTINGS #
 ############
-X_prices = []
-X_news = []
-X_commodity = []
-X_name = []
-X_indecaters = []
-
-y_changes = []
-
 n_past = 20    # Number of past days we want to use to predict the future.
-n_future = 1   # Number of days we want to predict into the future.
+n_future = 3   # Number of days we want to predict into the future.
 
 max_trials = 10
 executions_per_trial = 3
 
+periode = 259 # weeks, so 5 years 
+
 data = {}
 companies = []
 indicators = []
-test_stock = "Tesla"   
+test_stock = "Tesla" 
+
+scaler = MinMaxScaler() 
 
 ####### 
 # API #
 #######  
-# API_KEY = os.getenv("ALPACA_KEY")
-# API_SECRET = os.getenv("ALPACA_SECRET")
-# BASE_URL = "https://paper-api.alpaca.markets"
+API_KEY = str(os.getenv("ALPACA_KEY"))
+API_SECRET = str(os.getenv("ALPACA_SECRET"))
 
-# ALPACA_CREDS = {
-#     "API_KEY":API_KEY, 
-#     "API_SECRET": API_SECRET, 
-#     "PAPER": True
-# }
+BASE_URL = "https://paper-api.alpaca.markets"
 
-# api = REST(base_url=BASE_URL, key_id=API_KEY, secret_key=API_SECRET)
+ALPACA_CREDS = {
+    "API_KEY":API_KEY, 
+    "API_SECRET": API_SECRET, 
+    "PAPER": True
+}
+
+api = REST(base_url=BASE_URL, key_id=API_KEY, secret_key=API_SECRET)
 
 ###############
 # FOR LOOGING #
@@ -81,8 +85,38 @@ def printProgressBar(iteration, total, decimals = 1, length = 100, fill = '█',
     if iteration == total: 
         print()
 
-rounds = 0
+def clac_accuracy(y_test, y_pred):
+    points = 0
+    for i in range(len(y_test)):
+        if y_pred[i] != 0:
+            distence = y_test[i] / y_pred[i]
+            distence = 1 - abs(1 - distence) 
 
+            if distence > 0: 
+                points += distence
+
+            if y_test[i] < 0 and y_pred[i] < 0:
+                points += 0.5
+            
+            if y_test[i] > 0 and y_pred[i] > 0:
+                points += 0.5
+        else:
+            distence = abs(y_test[i] - y_pred[i]) 
+            distence = 1 - distence
+
+            if distence > 0: 
+                points += distence 
+
+            if y_test[i] < 0 and y_pred[i] < 0:
+                points += 0.5
+            
+            if y_test[i] > 0 and y_pred[i] > 0:
+                points += 0.5
+
+    points = points / len(y_test)
+    return points
+
+rounds = 0
 class CustomCallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         global rounds

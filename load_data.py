@@ -1,5 +1,4 @@
 from constants import *
-import datetime
 
 class Load_data(): 
 
@@ -85,81 +84,6 @@ class Load_data():
 
     def load_fundemental_data(self):
         pass 
-
-    def find_best_commodity(self, companies): 
-        commodity_data = {}
-        best_commodies = {}
-
-        for commodity in os.listdir("data/commodity"):
-            # open json file
-            with open(f"data/commodity/{commodity}") as f:
-                data = json.load(f)
-
-            commodity_data[commodity] = []
-
-            for i in range(len(data["series"][0]["data"])): 
-                commodity_data[commodity].append(data["series"][0]["data"][i]["y"])
-
-            # there are missing values in the data, there are 7 day intervals. If a value is missing, take the average of the previous and next value
-            start_date = datetime.datetime.strptime(data["series"][0]["data"][0]["date"], '%Y-%m-%dT%H:%M:%S')
-            date = start_date
-            for i in range(len(data["series"][0]["data"])):
-                if data["series"][0]["data"][i]["date"] != date.strftime('%Y-%m-%dT%H:%M:%S'):
-                    commodity_data[commodity].insert(i, (commodity_data[commodity][i-1] + commodity_data[commodity][i]) / 2)
-                date = date + datetime.timedelta(days=7)
-
-            # keep only self.period values
-            commodity_data[commodity] = commodity_data[commodity][-self.period:]
-
-        for company in companies:
-            # loading bar 
-            percent = round(((companies.index(company) / len(companies)) * 100) + 1)
-            printProgressBar(percent, 100, length = 50, description="Finding best commodities...")
-
-            df = pd.read_csv(f"data/data-day/{company}.csv")
-            df = df.dropna()
-            data = df.copy()
-
-            prices = data['Adj Close'].values   
-
-            prices = [np.mean(prices[i:i+30]) for i in range(0, len(prices), 30)]
-
-            best_commodies[company] = {}
-            diffs = {}
-
-            for commodity in commodity_data:    
-                for commodity in commodity_data:
-                    commodity_prices = commodity_data[commodity]
-
-                    # make sure the price data is the same length
-                    if len(prices) > len(commodity_prices):
-                        prices = prices[:len(commodity_prices)]
-                    else:
-                        commodity_prices = commodity_prices[:len(prices)]
-
-                    # scale the prices
-                    scaler = MinMaxScaler()
-                    prices_scaled = scaler.fit_transform(np.array(prices).reshape(-1, 1)).flatten()
-                    commodity_prices_scaled = scaler.transform(np.array(commodity_prices).reshape(-1, 1)).flatten()
-
-                    # scale the prices
-                    scaler = MinMaxScaler()
-                    prices_scaled = scaler.fit_transform(np.array(prices).reshape(-1, 1)).flatten()
-                    commodity_prices_scaled = scaler.transform(np.array(commodity_prices).reshape(-1, 1)).flatten()
-
-                    # calculate the diff
-                    diff = 0
-                    for i in range(len(prices_scaled)):
-                        diff += abs(prices_scaled[i] - commodity_prices_scaled[i])
-
-                    diffs[commodity] = diff
-                
-            best_commodies[company] = sorted(diffs, key=diffs.get)[:3]
- 
-            for commodity in range(len(best_commodies[company])):
-                best_commodies[company][commodity] = commodity_data[best_commodies[company][commodity]] 
-
-        return best_commodies
 
     def load_historical(self): 
         for filename in os.listdir("data/data-week"):

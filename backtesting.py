@@ -1,14 +1,6 @@
 from constants import *
 from load_data import Load_data 
 
-import os
-from datetime import datetime 
-
-from lumibot.brokers import Alpaca
-from lumibot.backtesting import YahooDataBacktesting
-from lumibot.strategies.strategy import Strategy
-from lumibot.traders import Trader
-
 #  TODO 
 #  1. Create data pipeline for testing and future data
 #  2. Create backtesting strategy
