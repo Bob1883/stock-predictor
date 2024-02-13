@@ -1,29 +1,29 @@
 from dependencies import *
 
-# DONE                                               TODO                                                   DOING
-#█ x █                                              Load in day data and use it when training, 20 days back █   █
-#█ x █                                rewrite change, becuse now the price data is of, use day data instead █   █
-#█ x █               Fix the scaler better so every parameter is scaled correctly, and not scal all at ones █   █
-#█ x █ Get somthing that makes the model archetecture automaticly, its called hyperparameter tuning i think █   █
-#█ x █          Make sure that the parameters are separated this time, so that the model knows what is what █   █
-#█ x █      Find a way so that the model knows what company it is, so that it can predict the right company █   █
-#█ x █                 Try to add the comodity data, its to much right know so i need to find a work around █   █
-#█ x █          Make a program that checks what comoditeis are the closest to the change in the stock price █   █
-#█ x █                              Add indicators to the model, like RSI, MACD, Bollinger Bands, and so on █   █    
-#█ x █                                                                                 Fix data looding bug █   █    
-#█ x █                                                                          Change get data to be a def █   █
-#█ x █                                      Add stock fundamentals, i dont really know where but i will try █   █
-#█ x █                                                                 Add the looding bar for the training █   █
-#█ x █                                                                                 Check the world data █   █
-#█   █                                                                               Add stock fundamentals █ x █
-#█   █                               Add the other data and see if it improves the model, if not, remove it █   █
-#█   █                                            Do some backtesting, find the best strategy for the model █   █
-#█   █                                                      If total falure is achieved, pick a stock strat █   █
-#█   █                                                            Check with companies the model is best at █   █
-#█   █                               Add a algorithm to see what indicators are the best for AI backtesting █   █
-#█   █                                             Dubble check price and commodity thing it might be wrong █   █
-#█   █                                            There is somthing wrong with how we import the price data █   █
-#█   █                                                                     ALL THE DATA LOODING IS WRONG ): █   █
+# DONE                                          TODO                                                   DOING
+#█ x █ Load in day data and use it when training, 20 days back                                         █   █
+#█ x █ Rewrite change, becuse now the price data is of, use day data instead                           █   █
+#█ x █ Fix the scaler better so every parameter is scaled correctly, and not scal all at ones          █   █
+#█ x █ Implemrnt hyperparameter tuning                                                                 █   █
+#█ x █ Make sure that the parameters are separated this time, so that the model knows what is what     █   █
+#█ x █ Find a way so that the model knows what company it is, so that it can predict the right company █   █
+#█ x █ Try to add the comodity data, its to much right know so i need to find a work around            █   █
+#█ x █ Make a program that checks what comoditeis are the closest to the change in the stock price     █   █
+#█ x █ Add indicators to the model, like RSI, MACD, Bollinger Bands, and so on                         █   █    
+#█ x █ Fix data looding bug                                                                            █   █    
+#█ x █ Change get data to be a def                                                                     █   █
+#█ x █ Add stock fundamentals, i dont really know where but i will try                                 █   █
+#█ x █ Add the looding bar for the training                                                            █   █
+#█ x █ Check the world data                                                                            █   █
+#█   █ Add stock fundamentals                                                                          █ x █
+#█   █ Add the other data and see if it improves the model, if not, remove it                          █ x █
+#█   █ Dubble check price and commodity thing it might be wrong                                        █ x █
+#█   █ There is somthing wrong with how we import the price data                                       █ x █
+#█   █ ALL THE DATA LOODING IS WRONG ):                                                                █ x █
+#█   █ Do some backtesting, find the best strategy for the model                                       █   █
+#█   █ If total falure is achieved, pick a stock strat                                                 █   █
+#█   █ Check with companies the model is best at                                                       █   █
+#█   █ Add a algorithm to see what indicators are the best for AI backtesting                          █   █
 
 for filename in os.listdir("./data/data-week"):
     company_name = filename.split("-")[0]
