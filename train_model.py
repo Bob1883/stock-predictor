@@ -33,26 +33,27 @@ for filename in os.listdir("./data/data-week"):
     if os.path.isfile(f"data/data-day/{company_name}.csv"):
         companies.append(company_name)
 
-companies = companies[:1]
+# companies = companies[:1]
 companies.append(test_stock)
 
-X_prices, X_news, X_name, y_changes, test_X_prices, test_X_news, test_X_name, test_y_changes = preprocessing(companies, test_stock, periode)
+# Assuming you have your preprocessed data
+X_prices_train, X_news_train, X_names_train, y_train, X_prices_test, X_news_test, X_name_test, y_test = preprocessing(companies, test_stock, periode, exclude=[])
 
-X_prices_train, X_prices_test, X_news_train, X_news_test, X_name_train, X_name_test, y_train, y_test = train_test_split(X_prices, X_news, X_name, y_changes, test_size=0.2, random_state=42)
+X_prices_train, X_prices_val, X_news_train, X_news_val, X_name_train, X_name_val, y_train, y_val = train_test_split(X_prices_train, X_news_train, X_names_train, y_train, test_size=0.2, random_state=42)
 
 def build_model(hp):
-    input_prices = Input(shape=(X_prices.shape[1], X_prices.shape[2]))
-    input_news = Input(shape=(X_news.shape[1], 1))
-    input_name = Input(shape=(1,))
+    input_prices = Input(shape=(X_prices_train.shape[1],))
+    input_news = Input(shape=(1,))
+    input_names = Input(shape=(1,))
 
-    lstm_prices = LSTM(hp.Int('units_prices', min_value=32, max_value=1024, step=64))(input_prices)
-    lstm_news = LSTM(hp.Int('units_news', min_value=32, max_value=1024, step=64))(input_news)
-    lstm_name = layers.Flatten()(input_name)    
+    lstm_prices = Dense(hp.Int('units_prices', min_value=32, max_value=1024, step=64), activation='relu')(input_prices)
+    lstm_news = Dense(hp.Int('units_news', min_value=32, max_value=1024, step=64), activation='relu')(input_news)
+    lstm_names = Dense(hp.Int('units_names', min_value=32, max_value=1024, step=64), activation='relu')(input_names)    
 
-    concatenated = concatenate([lstm_prices, lstm_news, lstm_name])
-    output = Dense(2, activation='linear')(concatenated)
+    concatenated = concatenate([lstm_prices, lstm_news, lstm_names])
+    output = Dense(1, activation='linear')(concatenated)
 
-    model = Model(inputs=[input_prices, input_news, input_name], outputs=output)
+    model = Model(inputs=[input_prices, input_news, input_names], outputs=output)
 
     model.compile(
         optimizer=keras.optimizers.Adam(
@@ -62,19 +63,11 @@ def build_model(hp):
 
     return model
 
-# plt the first array for changes
-plt.plot(y_changes, color = 'red', label = 'Real')
-plt.title('Stock Prediction')
-plt.xlabel('Time')
-plt.ylabel('Stock Price')
-plt.legend()
-plt.show()
-
 # get the number of folders in the models folder
 num_tests = len([name for name in os.listdir('models') if os.path.isdir(f'models/{name}')])
 
 tuner = RandomSearch(
-    build_model,
+    build_model,                              # The model-building function
     objective='val_mae',                      # The metric that should be optimized
     max_trials=max_trials,                    # The numbers of rounds to test
     executions_per_trial=executions_per_trial,# The number of models that should be tested in each round
@@ -83,11 +76,11 @@ tuner = RandomSearch(
 )
 
 tuner.search(
-    [X_prices_train, X_news_train, X_name_train], 
+    [X_prices_train, X_news_train, y_train], 
     y_train,
     epochs=50,
     batch_size=16,
-    validation_data=([X_prices_test, X_news_test, X_name_test], y_test),
+    validation_data=([X_prices_val, X_news_val, y_val], y_val),
     verbose=0, # 0 = silent, 1 = progress bar, 2 = one line per epoch
     callbacks=[CustomCallback()],
 )
@@ -101,12 +94,12 @@ model.summary()
 ########
 # TEST #
 ########
-y_pred = model.predict([test_X_prices, test_X_news, test_X_name])
+y_pred = model.predict([X_prices_test, X_news_test, y_test])
 
-accuracy = clac_accuracy(test_y_changes, y_pred)
-print(accuracy*100, "%")
+# accuracy = clac_accuracy(y_test, y_pred)[0]
+# print(round(accuracy*100), "%")
 
-plt.plot(test_y_changes, color = 'red', label = 'Real')
+plt.plot(y_test, color = 'red', label = 'Real')
 plt.plot(y_pred, color = 'blue', label = 'Predicted')
 plt.title('Stock Prediction')
 plt.xlabel('Time')

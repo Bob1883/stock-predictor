@@ -20,10 +20,10 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
-from lumibot.brokers import Alpaca
-from lumibot.backtesting import YahooDataBacktesting
-from lumibot.strategies.strategy import Strategy
-from lumibot.traders import Trader
+# from lumibot.brokers import Alpaca
+# from lumibot.backtesting import YahooDataBacktesting
+# from lumibot.strategies.strategy import Strategy
+# from lumibot.traders import Trader
 
 
 
@@ -51,25 +51,25 @@ periode = 259 # weeks, so 5 years
 data = {}
 companies = []
 indicators = []
-test_stock = "Tesla" 
+test_stock = "apple" 
 
 scaler = MinMaxScaler() 
 
 ####### 
 # API #
 #######  
-API_KEY = str(os.getenv("ALPACA_KEY"))
-API_SECRET = str(os.getenv("ALPACA_SECRET"))
+# API_KEY = str(os.getenv("ALPACA_KEY"))
+# API_SECRET = str(os.getenv("ALPACA_SECRET"))
 
-BASE_URL = "https://paper-api.alpaca.markets"
+# BASE_URL = "https://paper-api.alpaca.markets"
 
-ALPACA_CREDS = {
-    "API_KEY":API_KEY, 
-    "API_SECRET": API_SECRET, 
-    "PAPER": True
-}
+# ALPACA_CREDS = {
+#     "API_KEY":API_KEY, 
+#     "API_SECRET": API_SECRET, 
+#     "PAPER": True
+# }
 
-api = REST(base_url=BASE_URL, key_id=API_KEY, secret_key=API_SECRET)
+# api = REST(base_url=BASE_URL, key_id=API_KEY, secret_key=API_SECRET)
 
 ###############
 # FOR LOOGING #
@@ -120,6 +120,12 @@ rounds = 0
 class CustomCallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         global rounds
-        if epoch % 50 == 0:
+        if epoch % 50 == 0 or epoch == 0:
             rounds += 1
-        printProgressBar(rounds, max_trials*executions_per_trial, length=50, description="Training model...")
+            printProgressBar(rounds, max_trials*executions_per_trial, length=50, description="Training model...")
+
+        if epoch % 100 == 0:
+            print("\n")
+            print("Loss: ", logs['loss'])
+            print("Mae: ", logs['mae'])
+
