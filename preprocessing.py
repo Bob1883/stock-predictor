@@ -4,8 +4,9 @@ from constants import *
 
 indicator = Indicators()
 
-def preprocessing(companies, test_stock, periode, exclude=[]): 
+def preprocessing(companies, test_stock, periode): 
     indicators = []
+    g_trends = []
     commodties = []
     changes = []
     prices = []
@@ -13,6 +14,7 @@ def preprocessing(companies, test_stock, periode, exclude=[]):
     names = []
 
     test_indicators = []
+    test_g_trends = []
     test_commodties = []
     test_changes = []
     test_prices = []
@@ -61,27 +63,27 @@ def preprocessing(companies, test_stock, periode, exclude=[]):
             iteration = (((companies.index(company)+1) / len(companies)) * 100) 
             printProgressBar(iteration, 100, length = 50, description="Loading data...")
 
-            loader = Load_data(period=periode, company=company.lower())
+            loader = Load_data(company=company.lower())
             company_data = loader.get_raw_data()
             day_data = loader.load_day_data()
 
             num_days = len(pd.date_range(day_data['Date'].iloc[0], day_data['Date'].iloc[-1], freq='D')) + n_future
             current_date = pd.to_datetime(day_data['Date'].iloc[0])
 
-            for day in range(num_days): 
-                if current_date in day_data['Date'].values:
-                    entire_price_data[current_date] = round(day_data[day_data['Date'] == current_date]['Adj Close'].values[0], 2)
-                else:
-                    entire_price_data[current_date] = entire_price_data[current_date - pd.DateOffset(days=1)]
+            # for day in range(num_days): 
+            #     if current_date in day_data['Date'].values:
+            #         entire_price_data[current_date] = round(day_data[day_data['Date'] == current_date]['Adj Close'].values[0], 2)
+            #     else:
+            #         entire_price_data[current_date] = entire_price_data[current_date - pd.DateOffset(days=1)]
 
-                current_date = current_date + pd.DateOffset(days=1)
+            #     current_date = current_date + pd.DateOffset(days=1)
             
             diffs = {}
             for commodity in commodity_prices:
                 commodity_price = [commodity_prices[commodity][date] for date in commodity_prices[commodity]]
 
-                if len(commodity_price) != len(entire_price_data):
-                    commodity_price = commodity_price[:len(entire_price_data)]
+                # if len(commodity_price) != len(entire_price_data):
+                #     commodity_price = commodity_price[:len(entire_price_data)]
 
                 commodity_price = scaler.fit_transform(np.array(commodity_price).reshape(-1, 1)).reshape(-1)
                 company_price = scaler.transform(np.array([entire_price_data[date] for date in entire_price_data]).reshape(-1, 1)).reshape(-1)
@@ -116,9 +118,6 @@ def preprocessing(companies, test_stock, periode, exclude=[]):
                 else: 
                     changes_data.append(0)
 
-                # indicators
-                # indicator_data.append(indicator.get_indicators(company_data, start_date=current_date - pd.DateOffset(days=n_past), end_date=current_date))
-                
                 # name
                 name_data.append(name)
 
@@ -130,22 +129,37 @@ def preprocessing(companies, test_stock, periode, exclude=[]):
                 # news get from company_data
                 news_data.append(company_data['score'][date])
 
+            # change the change of the data to 1 or 0 depending on if the stock went up or down
+            
+            for i in range(len(changes_data)):
+                if changes_data[i] > 0:
+                    changes_data[i] = 1
+                else:
+                    changes_data[i] = 0
+
             if company == test_stock:
                 for i in range(len(price_data)):
-                    # test_indicators.append(indicator_data[i])
                     test_prices.append(price_data[i])
                     test_news.append(news_data[i])
                     test_commodties.append([commodity_data[0][i], commodity_data[1][i], commodity_data[2][i]])
                     test_names.append(name_data[i])
                     test_changes.append(changes_data[i])
+
+                test_commodties.append(commodity_data[0])
+                test_commodties.append(commodity_data[1])
+                test_commodties.append(commodity_data[2])
+
             else:
                 for i in range(len(price_data)):
-                    # indicators.append(indicator_data[i])
                     prices.append(price_data[i])
                     news.append(news_data[i])
-                    commodties.append([commodity_data[0][i], commodity_data[1][i], commodity_data[2][i]])
                     names.append(name_data[i])
                     changes.append(changes_data[i])
+
+                commodties.append(commodity_data[0])
+                commodties.append(commodity_data[1])
+                commodties.append(commodity_data[2])
+
         except Exception as e:
             print(e)
             print(f"Failed to load {company}")
@@ -162,15 +176,4 @@ def preprocessing(companies, test_stock, periode, exclude=[]):
     test_scaled_names = np.array(test_names)
     test_scaled_changes = np.array(test_changes)
 
-    # scale 
-    # scaled_prices = scaler.fit_transform(scaled_prices)
-    # scaled_news = scaler.fit_transform(scaled_news)
-    # scaled_names = scaler.fit_transform(scaled_names)
-    # scaled_changes = scaler.fit_transform(scaled_changes)
-
-    # test_scaled_prices = scaler.fit_transform(test_scaled_prices)
-    # test_scaled_news = scaler.fit_transform(test_scaled_news)
-    # test_scaled_names = scaler.fit_transform(test_scaled_names)
-    # test_scaled_changes = scaler.fit_transform(test_scaled_changes)
-
-    return scaled_prices, scaled_news, scaled_names, scaled_changes, test_scaled_prices, test_scaled_news, test_scaled_names, test_scaled_changes
+    return scaled_prices, scaled_news, scaled_names, scaled_changes, commodties, test_scaled_prices, test_scaled_news, test_scaled_names, test_scaled_changes, test_commodties

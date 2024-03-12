@@ -1,9 +1,61 @@
 from constants import *
 
-class Load_data(): 
+# alot of them are missing dates so this funktion fixes that 
+def fix_date_gaps(df, clm_name="Score"):
+    # Ensure 'Date' column is a datetime type
+    df['Date'] = pd.to_datetime(df['Date']) 
 
-    def __init__(self, period = 1, company = "tesla"):
-        self.period = period
+    # Get the dates from start to end 
+    start_date = df['Date'].min()  # More efficient than iloc[0]
+    end_date = df['Date'].max()   # More efficient than iloc[-1]
+
+    # Get all the dates in between
+    all_dates = pd.date_range(start_date, end_date)
+    new_rows = []
+
+    print(df)
+
+    # Iterate through expected dates
+    for i in range(len(df) - 1):
+        current_date = df.loc[i, 'Date']
+        next_date = df.loc[i + 1, 'Date']
+
+        days_to_interpolate = (next_date - current_date).days - 1  # Subtract 1
+
+        if days_to_interpolate > 0:  # Only interpolate if a gap exists
+            df[clm_name] = pd.to_numeric(df[clm_name]) 
+            score_diff = df.loc[i + 1, clm_name] - df.loc[i, clm_name]
+            score_increment = score_diff / days_to_interpolate
+
+            for j in range(1, days_to_interpolate):
+                new_date = current_date + pd.Timedelta(days=j)
+                new_score = df.loc[i, clm_name] + score_increment * j
+                new_rows.append({'Date': new_date, clm_name: new_score})
+
+    new_df = pd.DataFrame(new_rows)
+
+    # Concatenate with the original DataFrame 
+    df = pd.concat([df, new_df], ignore_index=True) 
+
+    # Sort after filling gaps
+    df = df.sort_values(by='Date').reset_index(drop=True)
+
+    print(df.head(30))
+
+    # plt the data
+    plt.plot(df['Date'], df[clm_name])
+    plt.show()
+    
+    return df
+
+class Load_data(): 
+    """
+    This class is used to load data from the data folder.
+    (NOT PREPROCESSED)
+    company: str - company name
+    """
+
+    def __init__(self, company:str):
         self.company = company
 
         self.historical_data = []
@@ -22,15 +74,16 @@ class Load_data():
                         dates.append(json_data[i][0])
                         scores.append(json_data[i][1])
 
-                    self.google_trends_data = pd.DataFrame(scores, columns=['score'])
+                    self.google_trends_data = pd.DataFrame(scores, columns=['Score'])
 
                     # add dates to dataframe
                     self.google_trends_data['Date'] = dates
                     self.google_trends_data['Date'] = pd.to_datetime(self.google_trends_data['Date'])
 
                     self.google_trends_data.reset_index(drop=True, inplace=True)
-                    self.google_trends_data = self.google_trends_data.iloc[-self.period:, :]
                     self.google_trends_data.reset_index(drop=True, inplace=True)
+
+        self.google_trends_data = fix_date_gaps(self.google_trends_data)
 
         return self.google_trends_data
 
@@ -46,7 +99,7 @@ class Load_data():
                         dates.append(json_data[i][0])
                         scores.append(json_data[i][1])
                     
-                    self.political_data = pd.DataFrame(scores, columns=['score'])
+                    self.political_data = pd.DataFrame(scores, columns=['Score'])
 
                     # add dates to dataframe
                     self.political_data['Date'] = dates
@@ -54,8 +107,15 @@ class Load_data():
 
                     self.political_data.reset_index(drop=True, inplace=True)
                     self.political_data = self.political_data.iloc[::-1]
-                    self.political_data = self.political_data.iloc[-(self.period+14):, :]
                     self.political_data.reset_index(drop=True, inplace=True)
+
+        self.political_data = fix_date_gaps(self.political_data)
+
+         # smooth out the curve 
+        if use_frec:
+            lowess = sm.nonparametric.lowess
+            z = lowess(self.political_data['Score'], self.political_data.index, frac=0.01)
+            self.political_data['Score'] = z[:, 1]
 
         return self.political_data
 
@@ -85,34 +145,6 @@ class Load_data():
     def load_fundemental_data(self):
         pass 
 
-    def load_historical(self): 
-        for filename in os.listdir("data/data-week"):
-            if filename.endswith(".csv") and filename.split("-")[0].lower() == self.company:
-                df = pd.read_csv(f"data/data-week/{filename}")
-                prices = []
-                dates = []
-                for date in df['Date']:
-                    prices.append(df[df['Date'] == date]['Adj Close'].values[0])
-
-                    # take dattes and subtract with 2 days
-                    date = datetime.datetime.strptime(date, '%Y-%m-%d')
-                    date = date + datetime.timedelta(days=4)
-                    date = date.strftime('%Y-%m-%d')
-                    dates.append(date)
-                
-                self.historical_data = pd.DataFrame(prices, columns=['Adj Close'])
-                # add dates to dataframe
-                self.historical_data['Date'] = dates
-                self.historical_data['Date'] = pd.to_datetime(self.historical_data['Date'])
-
-
-                self.historical_data.reset_index(drop=True, inplace=True)
-                # remove the last self.period amount of rows
-                self.historical_data = self.historical_data.iloc[-self.period:, :]
-                self.historical_data.reset_index(drop=True, inplace=True)
-
-        return self.historical_data 
-
     def load_day_data(self):
         for filename in os.listdir("data/data-day"):
             if filename.endswith(".csv") and filename.split(".")[0].lower() == self.company:
@@ -129,6 +161,18 @@ class Load_data():
                 self.day_data['Date'] = pd.to_datetime(self.day_data['Date'])
 
                 self.day_data.reset_index(drop=True, inplace=True)
+
+        self.day_data = fix_date_gaps(self.day_data, clm_name="Adj Close")
+
+        # smooth out the curve
+        if use_frec:
+            lowess = sm.nonparametric.lowess
+            z = lowess(self.day_data['Adj Close'], self.day_data.index, frac=0.005)
+            self.day_data['Adj Close'] = z[:, 1]
+
+        # plt the data
+        plt.plot(self.day_data['Date'], self.day_data['Adj Close'])
+        plt.show()
 
         return self.day_data 
     
@@ -170,7 +214,7 @@ class Load_data():
                             dates.append(date)
 
                     # scores = replace_zeroes_with_average(scores)
-                    self.news_data = pd.DataFrame(scores, columns=['score'])
+                    self.news_data = pd.DataFrame(scores, columns=['Score'])
 
                     # add dates to dataframe
                     self.news_data['Date'] = dates
@@ -178,8 +222,9 @@ class Load_data():
 
                     self.news_data.reset_index(drop=True, inplace=True)
                     self.news_data = self.news_data.iloc[::-1]
-                    self.news_data = self.news_data.iloc[-self.period:, :]
                     self.news_data.reset_index(drop=True, inplace=True)
+
+        self.news_data = fix_date_gaps(self.news_data)
 
         return self.news_data
                             
@@ -197,6 +242,10 @@ class Load_data():
         
         return data
 
-# loader = Load_data(period = 100, company = "tesla")
-# data = loader.load_political_data()
-# print(data)
+loader = Load_data(company = "tesla")
+# g_trends = loader.load_google_trends()
+# political = loader.load_political_data()
+# world = loader.load_world_data()
+# fundemental = loader.load_fundemental_data()
+# day = loader.load_day_data()
+news = loader.load_news()
