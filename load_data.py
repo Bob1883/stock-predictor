@@ -13,8 +13,6 @@ def fix_date_gaps(df, clm_name="Score"):
     all_dates = pd.date_range(start_date, end_date)
     new_rows = []
 
-    print(df)
-
     # Iterate through expected dates
     for i in range(len(df) - 1):
         current_date = df.loc[i, 'Date']
@@ -40,12 +38,6 @@ def fix_date_gaps(df, clm_name="Score"):
     # Sort after filling gaps
     df = df.sort_values(by='Date').reset_index(drop=True)
 
-    print(df.head(30))
-
-    # plt the data
-    plt.plot(df['Date'], df[clm_name])
-    plt.show()
-    
     return df
 
 class Load_data(): 
@@ -171,8 +163,8 @@ class Load_data():
             self.day_data['Adj Close'] = z[:, 1]
 
         # plt the data
-        plt.plot(self.day_data['Date'], self.day_data['Adj Close'])
-        plt.show()
+        # plt.plot(self.day_data['Date'], self.day_data['Adj Close'])
+        # plt.show()
 
         return self.day_data 
     
@@ -226,8 +218,54 @@ class Load_data():
 
         self.news_data = fix_date_gaps(self.news_data)
 
+        if use_frec: 
+            lowess = sm.nonparametric.lowess
+            z = lowess(self.news_data['Score'], self.news_data.index, frac=0.015)
+            self.news_data['Score'] = z[:, 1]
+
+        # plt.plot(self.news_data['Date'], self.news_data['Score'])
+        # plt.show()
+
         return self.news_data
-                            
+
+    def load_commodities(self):
+        self.commodities_data = pd.DataFrame()
+
+        for filename in os.listdir("data/commodity"):
+            if filename.endswith(".json"):
+                with open(f"data/commodity/{filename}") as f:
+                    temp_df = []
+                    json_data = json.load(f)
+                    scores = []
+                    dates = []
+                    for data in json_data["series"][0]["data"]:
+                        scores.append(data["y"])
+                        dates.append(data["date"])
+
+                    temp_df = pd.DataFrame(scores, columns=[str(filename.split(".")[0])])  
+    
+                    temp_df['Date'] = dates
+                    temp_df['Date'] = pd.to_datetime(temp_df['Date'])
+
+                    temp_df.reset_index(drop=True, inplace=True)
+
+                    temp_df = fix_date_gaps(temp_df, clm_name=filename.split(".")[0])
+
+                    if use_frec:
+                        lowess = sm.nonparametric.lowess
+                        z = lowess(temp_df[filename.split(".")[0]], temp_df.index, frac=0.01)
+                        temp_df[filename.split(".")[0]] = z[:, 1]
+
+                    if self.commodities_data.empty:
+                        self.commodities_data = temp_df
+                    else:
+                        self.commodities_data = pd.merge(self.commodities_data, temp_df, on='Date', how='outer')
+
+        self.commodities_data = self.commodities_data.dropna()
+        self.commodities_data.reset_index(drop=True, inplace=True)
+
+        return self.commodities_data
+
     def get_raw_data(self):
         self.historical_data = []
         self.news_data = []
@@ -242,10 +280,11 @@ class Load_data():
         
         return data
 
-loader = Load_data(company = "tesla")
+# loader = Load_data(company = "tesla")
 # g_trends = loader.load_google_trends()
 # political = loader.load_political_data()
 # world = loader.load_world_data()
 # fundemental = loader.load_fundemental_data()
 # day = loader.load_day_data()
-news = loader.load_news()
+# news = loader.load_news()
+# commo = loader.load_commodities()

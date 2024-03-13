@@ -50,7 +50,7 @@ executions_per_trial = 3
 
 use_frec = True
 
-periode = 259 # weeks, so 5 years 
+periode = 3  # years -> float
 epochs = 250
 
 data = {}

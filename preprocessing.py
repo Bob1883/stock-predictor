@@ -177,3 +177,6 @@ def preprocessing(companies, test_stock, periode):
     test_scaled_changes = np.array(test_changes)
 
     return scaled_prices, scaled_news, scaled_names, scaled_changes, commodties, test_scaled_prices, test_scaled_news, test_scaled_names, test_scaled_changes, test_commodties
+
+data = preprocessing(["tesla"], test_stock, periode)
+print(data)
