@@ -3,42 +3,19 @@ from constants import *
 # alot of them are missing dates so this funktion fixes that 
 def fix_date_gaps(df, clm_name="Score"):
     # Ensure 'Date' column is a datetime type
-    df['Date'] = pd.to_datetime(df['Date']) 
-
-    # Get the dates from start to end 
-    start_date = df['Date'].min()  # More efficient than iloc[0]
-    end_date = df['Date'].max()   # More efficient than iloc[-1]
-
+    df['Date'] = pd.to_datetime(df['Date'])
+    # Get the dates from start to end
+    start_date = df['Date'].min()
+    end_date = df['Date'].max()
     # Get all the dates in between
     all_dates = pd.date_range(start_date, end_date)
-    new_rows = []
-
-    # Iterate through expected dates
-    for i in range(len(df) - 1):
-        current_date = df.loc[i, 'Date']
-        next_date = df.loc[i + 1, 'Date']
-
-        days_to_interpolate = (next_date - current_date).days - 1  # Subtract 1
-
-        if days_to_interpolate > 0:  # Only interpolate if a gap exists
-            df[clm_name] = pd.to_numeric(df[clm_name]) 
-            score_diff = df.loc[i + 1, clm_name] - df.loc[i, clm_name]
-            score_increment = score_diff / days_to_interpolate
-
-            for j in range(1, days_to_interpolate):
-                new_date = current_date + pd.Timedelta(days=j)
-                new_score = df.loc[i, clm_name] + score_increment * j
-                new_rows.append({'Date': new_date, clm_name: new_score})
-
-    new_df = pd.DataFrame(new_rows)
-
-    # Concatenate with the original DataFrame 
-    df = pd.concat([df, new_df], ignore_index=True) 
-
-    # Sort after filling gaps
-    df = df.sort_values(by='Date').reset_index(drop=True)
-
-    return df
+    # Create a new DataFrame with all dates
+    new_df = pd.DataFrame({'Date': all_dates})
+    # Merge the original DataFrame with the new DataFrame
+    merged_df = pd.merge(new_df, df, on='Date', how='left')
+    # Fill missing values using linear interpolation
+    merged_df[clm_name] = merged_df[clm_name].interpolate()
+    return merged_df
 
 class Load_data(): 
     """
@@ -103,6 +80,14 @@ class Load_data():
 
         self.political_data = fix_date_gaps(self.political_data)
 
+        # Add missing dates and values until the last date is 2023-10-13
+        last_date = self.political_data['Date'].max()
+        if last_date < pd.to_datetime("2023-10-13"):
+            date_range = pd.date_range(start=last_date + pd.Timedelta(days=1), end="2023-10-13")
+            missing_dates = pd.DataFrame({"Date": date_range})
+            missing_dates['Score'] = self.political_data['Score'].mean()
+            self.political_data = pd.concat([self.political_data, missing_dates], ignore_index=True)
+
          # smooth out the curve 
         if use_frec:
             lowess = sm.nonparametric.lowess
@@ -156,6 +141,14 @@ class Load_data():
 
         self.day_data = fix_date_gaps(self.day_data, clm_name="Adj Close")
 
+        # Add missing dates and values until the last date is 2023-10-13
+        last_date = self.day_data['Date'].max()
+        if last_date < pd.to_datetime("2023-10-13"):
+            date_range = pd.date_range(start=last_date + pd.Timedelta(days=1), end="2023-10-13")
+            missing_dates = pd.DataFrame({"Date": date_range})
+            missing_dates['Adj Close'] = self.day_data['Adj Close'].mean()
+            self.day_data = pd.concat([self.day_data, missing_dates], ignore_index=True)
+
         # smooth out the curve
         if use_frec:
             lowess = sm.nonparametric.lowess
@@ -179,7 +172,6 @@ class Load_data():
                         weeks_score = 0
                         weeks_index = 0  
                         for article in json_data[date]:
-
                             try:
                                 probability = json_data[date][article]['probability']
                                 sentiment = json_data[date][article]['sentiment']
@@ -191,9 +183,8 @@ class Load_data():
                                 elif sentiment == "negative":
                                     weeks_score -= 100 * probability 
                                     weeks_index += 1
-
                             except:
-                                continue
+                                pass
                         
                         if weeks_index > 2: 
                             weeks_score = weeks_score / weeks_index
@@ -218,6 +209,15 @@ class Load_data():
 
         self.news_data = fix_date_gaps(self.news_data)
 
+        # Add missing dates and values until the last date is 2023-10-13
+        last_date = self.news_data['Date'].max()
+        if last_date < pd.to_datetime("2023-10-13"):
+            date_range = pd.date_range(start=last_date + pd.Timedelta(days=1), end="2023-10-13")
+            missing_dates = pd.DataFrame({"Date": date_range})
+            missing_dates['Score'] = self.news_data['Score'].mean()  # Fill missing values with the mean score
+            self.news_data = pd.concat([self.news_data, missing_dates], ignore_index=True)
+        
+
         if use_frec: 
             lowess = sm.nonparametric.lowess
             z = lowess(self.news_data['Score'], self.news_data.index, frac=0.015)
@@ -230,7 +230,6 @@ class Load_data():
 
     def load_commodities(self):
         self.commodities_data = pd.DataFrame()
-
         for filename in os.listdir("data/commodity"):
             if filename.endswith(".json"):
                 with open(f"data/commodity/{filename}") as f:
@@ -241,50 +240,33 @@ class Load_data():
                     for data in json_data["series"][0]["data"]:
                         scores.append(data["y"])
                         dates.append(data["date"])
-
                     temp_df = pd.DataFrame(scores, columns=[str(filename.split(".")[0])])  
     
                     temp_df['Date'] = dates
                     temp_df['Date'] = pd.to_datetime(temp_df['Date'])
-
                     temp_df.reset_index(drop=True, inplace=True)
-
                     temp_df = fix_date_gaps(temp_df, clm_name=filename.split(".")[0])
-
                     if use_frec:
                         lowess = sm.nonparametric.lowess
                         z = lowess(temp_df[filename.split(".")[0]], temp_df.index, frac=0.01)
                         temp_df[filename.split(".")[0]] = z[:, 1]
-
                     if self.commodities_data.empty:
                         self.commodities_data = temp_df
                     else:
                         self.commodities_data = pd.merge(self.commodities_data, temp_df, on='Date', how='outer')
-
+        
+        # Check the last date and add missing dates and values
+        last_date = self.commodities_data['Date'].max()
+        end_date = pd.to_datetime('2023-10-13')
+        if last_date < end_date:
+            date_range = pd.date_range(start=last_date, end=end_date, freq='D')[1:]
+            missing_dates = pd.DataFrame({'Date': date_range})
+            self.commodities_data = pd.merge(self.commodities_data, missing_dates, on='Date', how='outer')
+            self.commodities_data.fillna(method='ffill', inplace=True)
+        
         self.commodities_data = self.commodities_data.dropna()
         self.commodities_data.reset_index(drop=True, inplace=True)
-
         return self.commodities_data
-
-    def get_raw_data(self):
-        self.historical_data = []
-        self.news_data = []
-
-        self.load_historical()
-        self.load_news()
-
-        data = pd.merge(self.historical_data, self.news_data, on='Date', how='outer')
-
-        data = data.dropna()
-        data.reset_index(drop=True, inplace=True)
-        
-        return data
-
 # loader = Load_data(company = "tesla")
-# g_trends = loader.load_google_trends()
-# political = loader.load_political_data()
-# world = loader.load_world_data()
-# fundemental = loader.load_fundemental_data()
-# day = loader.load_day_data()
-# news = loader.load_news()
-# commo = loader.load_commodities()
+# news = loader.load_news()   
+# print(news)

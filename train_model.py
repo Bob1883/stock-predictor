@@ -19,9 +19,9 @@ from preprocessing import *
 #█ x █ Fix news                                                                                        █   █
 #█ x █ Fix price                                                                                       █   █
 #█ x █ Add the other data and see if it improves the model, if not, remove it                          █   █
+#█ x █ Commodity data looding is wrong                                                                 █   █
 #█   █ To much data from indicastors                                                                   █ x █	
 #█   █ indicators needs work                                                                           █ x █
-#█   █ Commodity data looding is wrong                                                                 █ x █
 #█   █ Add a algorithm to see what indicators are the best for AI backtesting                          █   █
 #█   █ Test witch commodity normelizer is best                                                         █   █
 

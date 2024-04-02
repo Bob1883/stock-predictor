@@ -4,138 +4,136 @@ from constants import *
 
 indicator = Indicators()
 
-def preprocessing(companies, test_stock, periode): 
-    indicators = []
-    g_trends = []
+# TODO: add google trends
+# TODO: add indicators
+# TODO: add world data
+
+def preprocessing(companies:list, test_stock:str, periode:int, exclude:list=[]): 
+    """
+    This function preprocesses the data for the model.
+    companies: list - list of companies
+    test_stock: str - test stock
+    periode: int - periode
+    exclude: list - list of companies to exclude
+    (indicators, g_trends, commodties, changes, prices, news, names) 
+    """
+
+    # indicators = []
+    # world = []
     commodties = []
+    g_trends = []
     changes = []
     prices = []
     news = []
     names = []
 
-    test_indicators = []
-    test_g_trends = []
+    # test_indicators = []
+    # test_world = []
     test_commodties = []
+    test_g_trends = []
     test_changes = []
     test_prices = []
     test_news = []
     test_names = []
 
-    # companies.append(test_stock)
     company_to_int = {company: i for i, company in enumerate(companies)}
-
-    commodity_prices = {}
-
-    for commodity in os.listdir("data/commodity"):
-        with open(f"data/commodity/{commodity}") as f:
-            data = json.load(f)
-
-        commodity = commodity.split(".")[0]
-        commodity_prices[commodity] = {}
-
-        num_days = len(pd.date_range(data["series"][0]["data"][0]["date"], data["series"][0]["data"][-1]["date"], freq='D')) + 5
-        current_date = datetime.datetime.strptime(data["series"][0]["data"][0]["date"], '%Y-%m-%dT%H:%M:%S')
-        for day in range(num_days): 
-            if current_date.strftime('%Y-%m-%dT%H:%M:%S') in [data["series"][0]["data"][i]["date"] for i in range(len(data["series"][0]["data"]))]:
-                index = [data["series"][0]["data"][i]["date"] for i in range(len(data["series"][0]["data"]))].index(current_date.strftime('%Y-%m-%dT%H:%M:%S'))
-                commodity_prices[commodity][current_date.strftime('%Y-%m-%dT%H:%M:%S')] = data["series"][0]["data"][index]["y"]
-            else: 
-                commodity_prices[commodity][current_date.strftime('%Y-%m-%dT%H:%M:%S')] = commodity_prices[commodity][(current_date - datetime.timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%S')]
-            current_date = current_date + datetime.timedelta(days=1)
+    
+    commodity_prices = Load_data("tesla").load_commodities()
 
     for company in companies:
         try:
-            indicator_data = []
+            printProgressBar(companies.index(company), len(companies), description=f"Preprocessing {company}" )
+            loader = Load_data(company=company.lower())
+
+            # indicator_data = []
+            best_commodities = []
             commodity_data = [[], [], []]
             changes_data = [] 
             price_data = []
-            name_data = []
             news_data = []
-
-            average_change_down = []
-            average_change_up = []
-
-            entire_price_data = {}
-            best_commodities = []
+            name_data = []
 
             name = company_to_int[company]
 
-            iteration = (((companies.index(company)+1) / len(companies)) * 100) 
-            printProgressBar(iteration, 100, length = 50, description="Loading data...")
+            #  get best commodities
+            diffs = {}  # Store differences for each commodity
+            entire_price_data = loader.load_day_data()["Adj Close"].values
 
-            loader = Load_data(company=company.lower())
-            company_data = loader.get_raw_data()
-            day_data = loader.load_day_data()
-
-            num_days = len(pd.date_range(day_data['Date'].iloc[0], day_data['Date'].iloc[-1], freq='D')) + n_future
-            current_date = pd.to_datetime(day_data['Date'].iloc[0])
-
-            # for day in range(num_days): 
-            #     if current_date in day_data['Date'].values:
-            #         entire_price_data[current_date] = round(day_data[day_data['Date'] == current_date]['Adj Close'].values[0], 2)
-            #     else:
-            #         entire_price_data[current_date] = entire_price_data[current_date - pd.DateOffset(days=1)]
-
-            #     current_date = current_date + pd.DateOffset(days=1)
-            
-            diffs = {}
             for commodity in commodity_prices:
-                commodity_price = [commodity_prices[commodity][date] for date in commodity_prices[commodity]]
+                if commodity not in "Date": 
+                    commodity_price = []
+                    for n in range(len(commodity_prices[commodity])):
+                        commodity_price.append(str(commodity_prices[commodity][n]))  # Convert 'Timestamp' object to string
 
-                # if len(commodity_price) != len(entire_price_data):
-                #     commodity_price = commodity_price[:len(entire_price_data)]
+                    # Ensure lengths are consistent:
+                    if len(commodity_price) > len(entire_price_data):
+                        commodity_price = commodity_price[:len(entire_price_data)]  # Trim if necessary
 
-                commodity_price = scaler.fit_transform(np.array(commodity_price).reshape(-1, 1)).reshape(-1)
-                company_price = scaler.transform(np.array([entire_price_data[date] for date in entire_price_data]).reshape(-1, 1)).reshape(-1)
+                    # Scaling (consider appropriateness for your use case)
+                    commodity_price = scaler.fit_transform(np.array(commodity_price).reshape(-1, 1)).reshape(-1)
+                    company_price = scaler.transform(np.array(entire_price_data).reshape(-1, 1)).reshape(-1)
 
-                diff = 0
-                for i in range(len(commodity_price)):
-                    diff += abs(commodity_price[i] - company_price[i])
+                    if len(commodity_price) != len(company_price):
+                        company_price = company_price[:len(commodity_price)]  # Trim if necessary
+                    
+                    diff = np.sqrt(np.mean((commodity_price - company_price) ** 2))  # Option 5: Root mean squared error
 
-                diffs[commodity] = diff
-            
-            best_commodities = sorted(diffs, key=diffs.get)[:3]
+                    diffs[commodity] = diff 
 
-            for date in range(len(company_data['Date'])):
-                price = []
-                current_date = pd.to_datetime(company_data['Date'][date])
+            best_commodities = sorted(diffs, key=diffs.get)[:3]  # Get the 3 best commodities
+
+            last_date = pd.to_datetime(loader.load_day_data()['Date'].iloc[-1])   
+
+            temp_news_data = loader.load_news()
+            # loade price data
+            entire_price_data = loader.load_day_data()
+
+            for date in range((periode*365)-n_past):
+                current_date = last_date - pd.DateOffset(days=((periode*365)-n_past)-date)
                 future_date = current_date + pd.DateOffset(days=n_future)
 
+                # lave the last three days, so we can predict the future
+                if future_date > last_date:
+                    break
+
+                # Price data
+                price = []
+
                 for index in range(n_past):
-                    try: 
                         past_date = current_date - pd.DateOffset(days=n_past - index)
-                        price.append(entire_price_data[past_date])
-                    except: 
-                        price.append(0)
+                        price.append(entire_price_data.loc[entire_price_data["Date"] == past_date.strftime('%Y-%m-%d'), "Adj Close"].values[0])
 
                 price_data.append(price)
 
-                # change 
-                current_price = entire_price_data[current_date]
-                future_price = entire_price_data[future_date]
+                # Changes data
+                current_price = entire_price_data[entire_price_data["Date"] == current_date.strftime('%Y-%m-%d')]["Adj Close"].values[0]
+                future_price = entire_price_data[entire_price_data["Date"] == future_date.strftime('%Y-%m-%d')]["Adj Close"].values[0]
                 if current_price != 0: 
                     changes_data.append(round(((future_price / current_price) - 1)*100, 2))
                 else: 
                     changes_data.append(0)
 
-                # name
+                # name data
                 name_data.append(name)
 
-                # commodity
+                # commodity data
                 for commodity in best_commodities:
-                    index = best_commodities.index(commodity)
-                    commodity_data[index].append(commodity_prices[commodity][current_date.strftime('%Y-%m-%dT%H:%M:%S')])
+                    # find the price on the current date by using boolean indexing
+                    price = commodity_prices.loc[commodity_prices["Date"] == current_date.strftime('%Y-%m-%d'), commodity].values[0]
+                    # append the price to the corresponding commodity data
+                    commodity_data[best_commodities.index(commodity)].append(price)
 
-                # news get from company_data
-                news_data.append(company_data['score'][date])
+                # news data   
+                news_data.append(temp_news_data[temp_news_data["Date"] == current_date.strftime('%Y-%m-%d')]["Score"].values[0])
+    
 
-            # change the change of the data to 1 or 0 depending on if the stock went up or down
-            
-            for i in range(len(changes_data)):
-                if changes_data[i] > 0:
-                    changes_data[i] = 1
-                else:
-                    changes_data[i] = 0
+            price_data = scaler.fit_transform(price_data).tolist()
+            news_data = scaler.fit_transform(np.array(news_data).reshape(-1, 1)).flatten().tolist()
+            commodity_data[0] = scaler.fit_transform(np.array(commodity_data[0]).reshape(-1, 1)).flatten().tolist()
+            commodity_data[1] = scaler.fit_transform(np.array(commodity_data[1]).reshape(-1, 1)).flatten().tolist()
+            commodity_data[2] = scaler.fit_transform(np.array(commodity_data[2]).reshape(-1, 1)).flatten().tolist()
+            # name_data = scaler.fit_transform(np.array(name_data).reshape(-1, 1)).flatten().tolist()
+            changes_data = scaler.fit_transform(np.array(changes_data).reshape(-1, 1)).flatten().tolist()
 
             if company == test_stock:
                 for i in range(len(price_data)):
@@ -144,39 +142,21 @@ def preprocessing(companies, test_stock, periode):
                     test_commodties.append([commodity_data[0][i], commodity_data[1][i], commodity_data[2][i]])
                     test_names.append(name_data[i])
                     test_changes.append(changes_data[i])
-
                 test_commodties.append(commodity_data[0])
                 test_commodties.append(commodity_data[1])
                 test_commodties.append(commodity_data[2])
-
             else:
                 for i in range(len(price_data)):
                     prices.append(price_data[i])
                     news.append(news_data[i])
                     names.append(name_data[i])
                     changes.append(changes_data[i])
-
                 commodties.append(commodity_data[0])
                 commodties.append(commodity_data[1])
                 commodties.append(commodity_data[2])
 
         except Exception as e:
-            print(e)
-            print(f"Failed to load {company}")
+            print("\033[91m" + f"Failed to preprocess {company}" + "\033[0m")
             time.sleep(1)
-
-    # normalize the data
-    scaled_prices = np.array(prices)
-    scaled_news = np.array(news)
-    scaled_names = np.array(names)
-    scaled_changes = np.array(changes)
-
-    test_scaled_prices = np.array(test_prices)
-    test_scaled_news = np.array(test_news)
-    test_scaled_names = np.array(test_names)
-    test_scaled_changes = np.array(test_changes)
-
-    return scaled_prices, scaled_news, scaled_names, scaled_changes, commodties, test_scaled_prices, test_scaled_news, test_scaled_names, test_scaled_changes, test_commodties
-
-data = preprocessing(["tesla"], test_stock, periode)
-print(data)
+            
+    return commodties, g_trends, changes, prices, news, names
