@@ -7,6 +7,7 @@ indicator = Indicators()
 # TODO: add google trends
 # TODO: add indicators
 # TODO: add world data
+# TODO: add political data
 
 def preprocessing(companies:list, test_stock:str, periode:int, exclude:list=[]): 
     """

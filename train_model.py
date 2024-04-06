@@ -30,82 +30,144 @@ from preprocessing import *
 #█   █ Check with companies the model is best at                                                       █   █
 #█   █ Fundementals data is to incomplete, find a better source (future problem)                       █   █
 
-def train_model(companies):
-    for filename in os.listdir("./data/data-week"):
-        company_name = filename.split("-")[0]
-        if os.path.isfile(f"data/data-day/{company_name}.csv"):
-            companies.append(company_name)
+def build_model(hp):
+    input_prices = Input(shape=(n_past, 1))
+    input_news = Input(shape=(1,))
+    input_commoditie1 = Input(shape=(1,))
+    input_commoditie2 = Input(shape=(1,))
+    input_commoditie3 = Input(shape=(1,))
+    input_names = Input(shape=(1,))
 
-    # companies = companies[:1]
-    companies.append(test_stock)
+    # Prices branch
+    lstm_prices = LSTM(units=hp.Int('lstm_units_prices', min_value=32, max_value=512, step=32), return_sequences=True)(input_prices)
+    lstm_prices = Dropout(hp.Float('dropout_prices', min_value=0.1, max_value=0.5, step=0.1))(lstm_prices)
+    lstm_prices = LSTM(units=hp.Int('lstm_units_prices_2', min_value=32, max_value=512, step=32))(lstm_prices)
 
-    # Assuming you have your preprocessed data
-    X_prices_train, X_news_train, X_names_train, y_train, X_prices_test, X_news_test, X_name_test, y_test = preprocessing(companies, test_stock, periode, exclude=[])
+    # News branch
+    dense_news = Dense(units=hp.Int('dense_units_news', min_value=32, max_value=512, step=32), activation='relu')(input_news)
+    dense_news = Dropout(hp.Float('dropout_news', min_value=0.1, max_value=0.5, step=0.1))(dense_news)
 
-    X_prices_train, X_prices_val, X_news_train, X_news_val, X_name_train, X_name_val, y_train, y_val = train_test_split(X_prices_train, X_news_train, X_names_train, y_train, test_size=0.2, random_state=42)
+    # Commodities branch
+    dense_commoditie1 = Dense(units=hp.Int('dense_units_commoditie1', min_value=32, max_value=512, step=32), activation='relu')(input_commoditie1)
+    dense_commoditie1 = Dropout(hp.Float('dropout_commoditie1', min_value=0.1, max_value=0.5, step=0.1))(dense_commoditie1)
 
-    def build_model(hp):
-        input_prices = Input(shape=(X_prices_train.shape[1],))
-        input_news = Input(shape=(1,))
-        input_names = Input(shape=(1,))
+    dense_commoditie2 = Dense(units=hp.Int('dense_units_commoditie2', min_value=32, max_value=512, step=32), activation='relu')(input_commoditie2)
+    dense_commoditie2 = Dropout(hp.Float('dropout_commoditie2', min_value=0.1, max_value=0.5, step=0.1))(dense_commoditie2)
 
-        lstm_prices = Dense(hp.Int('units_prices', min_value=32, max_value=1024, step=64), activation='relu')(input_prices)
-        lstm_news = Dense(hp.Int('units_news', min_value=32, max_value=1024, step=64), activation='relu')(input_news)
-        lstm_names = Dense(hp.Int('units_names', min_value=32, max_value=1024, step=64), activation='relu')(input_names)    
+    dense_commoditie3 = Dense(units=hp.Int('dense_units_commoditie3', min_value=32, max_value=512, step=32), activation='relu')(input_commoditie3)
+    dense_commoditie3 = Dropout(hp.Float('dropout_commoditie3', min_value=0.1, max_value=0.5, step=0.1))(dense_commoditie3)
 
-        concatenated = concatenate([lstm_prices, lstm_news, lstm_names])
-        output = Dense(1, activation='linear')(concatenated)
+    # Names branch
+    dense_names = Dense(units=hp.Int('dense_units_names', min_value=32, max_value=512, step=32),
+                        activation='relu')(input_names)
+    dense_names = Dropout(hp.Float('dropout_names', min_value=0.1, max_value=0.5, step=0.1))(dense_names)
 
-        model = Model(inputs=[input_prices, input_news, input_names], outputs=output)
+    # Concatenate all branches
+    concatenated = Concatenate()([lstm_prices, dense_news, dense_commoditie1, dense_commoditie2, dense_commoditie3, dense_names])
 
-        model.compile(
-            optimizer=keras.optimizers.Adam(
-                hp.Choice('learning_rate', values=[1e-2, 1e-3, 1e-4])),
-            loss='mse',
-            metrics=['mae'])
+    # Output layer
+    output = Dense(1, activation='linear')(concatenated)
 
-        return model
+    model = Model(inputs=[input_prices, input_news, input_commoditie1, input_commoditie2, input_commoditie3, input_names], outputs=output)
+    model.compile(optimizer=Adam(hp.Choice('learning_rate', values=[1e-2, 1e-3, 1e-4])),
+                  loss='mse',
+                  metrics=['mae'])
+    return model
 
-    # get the number of folders in the models folder
+def train_model(companies, test_stock, periode, max_trials=50, executions_per_trial=3):
+    # Preprocessing
+    commodities, g_trends, changes, prices, news, names = preprocessing(companies, test_stock, periode)
+    
+    # Split commodities into three different variables
+    commodity1, commodity2, commodity3 = [], [], []
+    # so its an array of a few hundred lists, the first list should go in commodity1, the second in commodity2, and the third in commodity3, then the fourth in commodity1 and so on
+    for i, commodity in enumerate(commodities):
+        if i % 3 == 0:
+            for n in range(len(commodity)):
+                commodity1.append(commodity[n])
+        elif i % 3 == 1:
+            for n in range(len(commodity)):
+                commodity2.append(commodity[n])
+        else:
+            for n in range(len(commodity)):
+                commodity3.append(commodity[n])
+
+    # convret to numpy arrays
+    prices = np.array(prices)
+    news = np.array(news)
+    commodity1 = np.array(commodity1)
+    commodity2 = np.array(commodity2)
+    commodity3 = np.array(commodity3)
+    names = np.array(names)
+    changes = np.array(changes)
+    
+    # Split data into train, validation, and test sets
+    X_prices_train, X_prices_test, X_news_train, X_news_test, X_commodity1_train, X_commodity1_test, X_commodity2_train, X_commodity2_test, X_commodity3_train, X_commodity3_test, X_names_train, X_names_test, y_train, y_test = train_test_split(prices, news, commodity1, commodity2, commodity3, names, changes, test_size=0.2, random_state=42)
+    X_prices_train, X_prices_val, X_news_train, X_news_val, X_commodity1_train, X_commodity1_val, X_commodity2_train, X_commodity2_val, X_commodity3_train, X_commodity3_val, X_names_train, X_names_val, y_train, y_val = train_test_split(X_prices_train, X_news_train, X_commodity1_train, X_commodity2_train, X_commodity3_train, X_names_train, y_train, test_size=0.2, random_state=42)
+    
+    # Reshape input data
+    X_prices_train = np.reshape(X_prices_train, (X_prices_train.shape[0], X_prices_train.shape[1], 1))
+    X_prices_val = np.reshape(X_prices_val, (X_prices_val.shape[0], X_prices_val.shape[1], 1))
+    X_prices_test = np.reshape(X_prices_test, (X_prices_test.shape[0], X_prices_test.shape[1], 1))
+    
+    # Create a directory to store the models
     num_tests = len([name for name in os.listdir('models') if os.path.isdir(f'models/{name}')])
-
+    model_dir = f'models/stock-predictor-33'
+    os.makedirs(model_dir, exist_ok=True)
+    
+    # Hyperparameter tuning
     tuner = RandomSearch(
-        build_model,                              # The model-building function
-        objective='val_mae',                      # The metric that should be optimized
-        max_trials=max_trials,                    # The numbers of rounds to test
-        executions_per_trial=executions_per_trial,# The number of models that should be tested in each round
-        directory='models',                       # The directory where the models should be saved
-        project_name=f'stock-predictor-{num_tests}'
+        build_model,
+        objective='val_mae',
+        max_trials=max_trials,
+        executions_per_trial=executions_per_trial,
+        directory=model_dir,
+        project_name='stock-predictor'
     )
-
+    
+    # Early stopping and model checkpointing
+    early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+    model_checkpoint = ModelCheckpoint(f'{model_dir}/best_model.h5', save_best_only=True, monitor='val_loss', mode='min')
+    
+    # Perform the search
     tuner.search(
-        [X_prices_train, X_news_train, y_train], 
+        [X_prices_train, X_news_train, X_commodity1_train, X_commodity2_train, X_commodity3_train, X_names_train],
         y_train,
-        epochs=50,
-        batch_size=16,
-        validation_data=([X_prices_val, X_news_val, y_val], y_val),
-        verbose=0, # 0 = silent, 1 = progress bar, 2 = one line per epoch
-        callbacks=[CustomCallback()],
+        epochs=100,
+        batch_size=32,
+        validation_data=([X_prices_val, X_news_val, X_commodity1_val, X_commodity2_val, X_commodity3_val, X_names_val], y_val),
+        callbacks=[early_stopping, model_checkpoint],
+        verbose=1
     )
+    
+    # Get the best model
+    best_model = tuner.get_best_models(num_models=1)[0]
+    best_model.summary()
 
-    # tuner.results_summary()
+    # Save the best model
+    best_model.save(f'{model_dir}/best_model.h5')
 
-    model = tuner.get_best_models(num_models=1)[0]
+    # Evaluate the model on the test set
+    y_pred = best_model.predict([X_prices_test, X_news_test, X_commodity1_test, X_commodity2_test, X_commodity3_test, X_names_test])
 
-    model.summary()
+    y_t = [val - 0.5 for val in y_test]
+    y_p = [val - 0.5 for val in y_pred]
+    clac_accuracy(y_t, y_p)
 
-    ########
-    # TEST #
-    ########
-    y_pred = model.predict([X_prices_test, X_news_test, y_test])
-
-    # accuracy = clac_accuracy(y_test, y_pred)[0]
-    # print(round(accuracy*100), "%")
-
-    plt.plot(y_test, color = 'red', label = 'Real')
-    plt.plot(y_pred, color = 'blue', label = 'Predicted')
-    plt.title('Stock Prediction')
+    # Plot the real vs predicted stock prices
+    plt.figure(figsize=(12, 6))
+    plt.plot(y_test, color='red', label='Real Stock Price')
+    plt.plot(y_pred, color='blue', label='Predicted Stock Price')
+    plt.title('Stock Price Prediction')
     plt.xlabel('Time')
     plt.ylabel('Stock Price')
     plt.legend()
     plt.show()
+
+companies = []
+
+for filename in os.listdir('data/data-day'):
+    if filename.endswith('.csv'):
+        companies.append(filename.split('.')[0].lower())
+
+train_model(companies, test_stock, periode, max_trials=11, executions_per_trial=3)
