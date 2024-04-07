@@ -1,8 +1,6 @@
-from indicators import Indicators   
 from load_data import Load_data
 from constants import *
-
-indicator = Indicators()
+import multiprocessing
 
 # TODO: add google trends
 # TODO: add indicators
@@ -19,21 +17,43 @@ def preprocessing(companies:list, test_stock:str, periode:int, exclude:list=[]):
     (indicators, g_trends, commodties, changes, prices, news, names) 
     """
 
-    # indicators = []
-    # world = []
+    rsi = []
+    macd = []
+    ema_20 = []
+    ema_50 = []
+    ema_200 = []
+    bb_low = []
+    bb_high = []
+    obv = []
+    debt = []
+    gdp = []
+    inflation = []
+    unemployement = []
     commodties = []
-    g_trends = []
+    google_trends = []
     changes = []
     prices = []
+    political = []
     news = []
     names = []
 
-    # test_indicators = []
-    # test_world = []
+    test_rsi = []
+    test_macd = []
+    test_ema_20 = []
+    test_ema_50 = []
+    test_ema_200 = []
+    test_low_bb = []
+    test_bb_high = []
+    test_obv = []
+    test_debt = []
+    test_gdp = []
+    test_inflation = []
+    test_unemployement = []
     test_commodties = []
-    test_g_trends = []
+    test_google_trends = []
     test_changes = []
     test_prices = []
+    test_political = []
     test_news = []
     test_names = []
 
@@ -46,11 +66,24 @@ def preprocessing(companies:list, test_stock:str, periode:int, exclude:list=[]):
             printProgressBar(companies.index(company), len(companies), description=f"Preprocessing {company}" )
             loader = Load_data(company=company.lower())
 
-            # indicator_data = []
+            rsi_data = []
+            macd_data = []
+            ema_20_data = []
+            ema_50_data = []
+            ema_200_data = []
+            bb_low_data = []
+            bb_high_data = []
+            obv_data = []
+            debt_data = []
+            gdp_data = []
+            inflation_data = []
+            unemployement_data = []
             best_commodities = []
             commodity_data = [[], [], []]
             changes_data = [] 
             price_data = []
+            g_trends = []
+            political_data = []
             news_data = []
             name_data = []
 
@@ -86,7 +119,10 @@ def preprocessing(companies:list, test_stock:str, periode:int, exclude:list=[]):
             last_date = pd.to_datetime(loader.load_day_data()['Date'].iloc[-1])   
 
             temp_news_data = loader.load_news()
-            # loade price data
+            temp_google_trends = loader.load_google_trends()
+            temp_political_data = loader.load_political_data()
+            temp_indicators = loader.load_indicators()
+            temp_world_data = loader.load_world_data()
             entire_price_data = loader.load_day_data()
 
             for date in range((periode*365)-n_past):
@@ -126,15 +162,52 @@ def preprocessing(companies:list, test_stock:str, periode:int, exclude:list=[]):
 
                 # news data   
                 news_data.append(temp_news_data[temp_news_data["Date"] == current_date.strftime('%Y-%m-%d')]["Score"].values[0])
-    
+
+                # google trends data
+                g_trends.append(temp_google_trends[temp_google_trends["Date"] == current_date.strftime('%Y-%m-%d')]["Score"].values[0])
+
+                # political data
+                political_data.append(temp_political_data[temp_political_data["Date"] == current_date.strftime('%Y-%m-%d')]["Score"].values[0]) 
+
+                # indicators
+                rsi_data.append(temp_indicators[temp_indicators["Date"] == current_date.strftime('%Y-%m-%d')]["RSI"].values[0])
+                macd_data.append(temp_indicators[temp_indicators["Date"] == current_date.strftime('%Y-%m-%d')]["MACD"].values[0])
+                ema_20_data.append(temp_indicators[temp_indicators["Date"] == current_date.strftime('%Y-%m-%d')]["EMA_20"].values[0])
+                ema_50_data.append(temp_indicators[temp_indicators["Date"] == current_date.strftime('%Y-%m-%d')]["EMA_50"].values[0])
+                ema_200_data.append(temp_indicators[temp_indicators["Date"] == current_date.strftime('%Y-%m-%d')]["EMA_200"].values[0])
+                bb_low_data.append(temp_indicators[temp_indicators["Date"] == current_date.strftime('%Y-%m-%d')]["BB_Low"].values[0])
+                bb_high_data.append(temp_indicators[temp_indicators["Date"] == current_date.strftime('%Y-%m-%d')]["BB_High"].values[0])
+                obv_data.append(temp_indicators[temp_indicators["Date"] == current_date.strftime('%Y-%m-%d')]["OBV"].values[0])
+
+                # world data
+                debt_data.append(temp_world_data[temp_world_data["Date"] == current_date.strftime('%Y-%m-%d')]["debt"].values[0])
+                gdp_data.append(temp_world_data[temp_world_data["Date"] == current_date.strftime('%Y-%m-%d')]["GDP"].values[0])
+                inflation_data.append(temp_world_data[temp_world_data["Date"] == current_date.strftime('%Y-%m-%d')]["Inflation"].values[0])
+                unemployement_data.append(temp_world_data[temp_world_data["Date"] == current_date.strftime('%Y-%m-%d')]["Unemployment"].values[0])
+
 
             price_data = scaler.fit_transform(price_data).tolist()
             news_data = scaler.fit_transform(np.array(news_data).reshape(-1, 1)).flatten().tolist()
             commodity_data[0] = scaler.fit_transform(np.array(commodity_data[0]).reshape(-1, 1)).flatten().tolist()
             commodity_data[1] = scaler.fit_transform(np.array(commodity_data[1]).reshape(-1, 1)).flatten().tolist()
             commodity_data[2] = scaler.fit_transform(np.array(commodity_data[2]).reshape(-1, 1)).flatten().tolist()
-            # name_data = scaler.fit_transform(np.array(name_data).reshape(-1, 1)).flatten().tolist()
             changes_data = scaler.fit_transform(np.array(changes_data).reshape(-1, 1)).flatten().tolist()
+            g_trends = scaler.fit_transform(np.array(g_trends).reshape(-1, 1)).flatten().tolist()
+            political_data = scaler.fit_transform(np.array(political_data).reshape(-1, 1)).flatten().tolist()
+
+            rsi_data = scaler.fit_transform(np.array(rsi_data).reshape(-1, 1)).flatten().tolist()
+            macd_data = scaler.fit_transform(np.array(macd_data).reshape(-1, 1)).flatten().tolist()
+            ema_20_data = scaler.fit_transform(np.array(ema_20_data).reshape(-1, 1)).flatten().tolist()
+            ema_50_data = scaler.fit_transform(np.array(ema_50_data).reshape(-1, 1)).flatten().tolist()
+            ema_200_data = scaler.fit_transform(np.array(ema_200_data).reshape(-1, 1)).flatten().tolist()
+            bb_low_data = scaler.fit_transform(np.array(bb_low_data).reshape(-1, 1)).flatten().tolist()
+            bb_high_data = scaler.fit_transform(np.array(bb_high_data).reshape(-1, 1)).flatten().tolist()
+            obv_data = scaler.fit_transform(np.array(obv_data).reshape(-1, 1)).flatten().tolist()
+
+            debt_data = scaler.fit_transform(np.array(debt_data).reshape(-1, 1)).flatten().tolist()
+            gdp_data = scaler.fit_transform(np.array(gdp_data).reshape(-1, 1)).flatten().tolist()
+            inflation_data = scaler.fit_transform(np.array(inflation_data).reshape(-1, 1)).flatten().tolist()
+            unemployement_data = scaler.fit_transform(np.array(unemployement_data).reshape(-1, 1)).flatten().tolist()
 
             if company == test_stock:
                 for i in range(len(price_data)):
@@ -142,22 +215,55 @@ def preprocessing(companies:list, test_stock:str, periode:int, exclude:list=[]):
                     test_news.append(news_data[i])
                     test_commodties.append([commodity_data[0][i], commodity_data[1][i], commodity_data[2][i]])
                     test_names.append(name_data[i])
+                    test_google_trends.append(g_trends[i])
                     test_changes.append(changes_data[i])
+                    test_political.append(political_data[i])
+                    
+                    test_rsi.append(rsi_data[i])
+                    test_macd.append(macd_data[i])
+                    test_ema_20.append(ema_20_data[i])
+                    test_ema_50.append(ema_50_data[i])
+                    test_ema_200.append(ema_200_data[i])
+                    test_low_bb.append(bb_low_data[i])
+                    test_bb_high.append(bb_high_data[i])
+                    test_obv.append(obv_data[i])
+
+                    test_debt.append(debt_data[i])
+                    test_gdp.append(gdp_data[i])
+                    test_inflation.append(inflation_data[i])
+                    test_unemployement.append(unemployement_data[i])
+
                 test_commodties.append(commodity_data[0])
                 test_commodties.append(commodity_data[1])
                 test_commodties.append(commodity_data[2])
             else:
                 for i in range(len(price_data)):
                     prices.append(price_data[i])
-                    news.append(news_data[i])
+                    news.append(news_data[i]) 
                     names.append(name_data[i])
+                    google_trends.append(g_trends[i])
                     changes.append(changes_data[i])
+                    political.append(political_data[i])
+
+                    rsi.append(rsi_data[i])
+                    macd.append(macd_data[i])
+                    ema_20.append(ema_20_data[i])
+                    ema_50.append(ema_50_data[i])
+                    ema_200.append(ema_200_data[i])
+                    bb_low.append(bb_low_data[i])
+                    bb_high.append(bb_high_data[i])
+                    obv.append(obv_data[i])
+
+                    debt.append(debt_data[i])
+                    gdp.append(gdp_data[i])
+                    inflation.append(inflation_data[i])
+                    unemployement.append(unemployement_data[i])
+
                 commodties.append(commodity_data[0])
                 commodties.append(commodity_data[1])
                 commodties.append(commodity_data[2])
 
         except Exception as e:
             print("\033[91m" + f"Failed to preprocess {company}" + "\033[0m")
-            time.sleep(1)
             
-    return commodties, g_trends, changes, prices, news, names
+    return commodties, google_trends, changes, prices, political, news, names, rsi, macd, ema_20, ema_50, ema_200, bb_low, bb_high, obv, debt, gdp, inflation, unemployement

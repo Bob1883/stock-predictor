@@ -60,6 +60,7 @@ class Load_data():
         self.historical_data = []
         self.political_data = []
         self.volumes_data = []
+        self.indicators = []    
         self.news_data = []
         self.day_data = []
 
@@ -339,8 +340,9 @@ class Load_data():
         return self.volumes_data
 
     def load_indicators(self):
-        self.load_day_data()
-        self.load_volumes()
+        self.day_data = self.load_day_data()
+        self.volumes_data = self.load_volumes()
+
         close_prices = self.day_data['Adj Close'].values
         volume = self.volumes_data['Volume'].values
         dates = self.day_data['Date'].values
@@ -361,18 +363,20 @@ class Load_data():
         obv_df = pd.DataFrame({'OBV': obv_data, 'Date': dates})
 
         # plot the data on top of the price data
-        plt.plot(self.day_data['Date'], close_prices, label='Close Prices')
-        plt.plot(rsi_df['Date'], rsi_df['RSI'], label='RSI')
-        plt.plot(macd_df['Date'], macd_df['MACD'], label='MACD')
-        plt.plot(ema_df['Date'], ema_df['EMA_20'], label='EMA 20')
-        plt.plot(ema_df['Date'], ema_df['EMA_50'], label='EMA 50')
-        plt.plot(ema_df['Date'], ema_df['EMA_200'], label='EMA 200')
-        plt.plot(bb_df['Date'], bb_df['BB_High'], label='Bollinger Bands High')
-        plt.plot(bb_df['Date'], bb_df['BB_Low'], label='Bollinger Bands Low')
-        plt.legend()
-        plt.show()
+        # plt.plot(self.day_data['Date'], close_prices, label='Close Prices')
+        # plt.plot(rsi_df['Date'], rsi_df['RSI'], label='RSI')
+        # plt.plot(macd_df['Date'], macd_df['MACD'], label='MACD')
+        # plt.plot(ema_df['Date'], ema_df['EMA_20'], label='EMA 20')
+        # plt.plot(ema_df['Date'], ema_df['EMA_50'], label='EMA 50')
+        # plt.plot(ema_df['Date'], ema_df['EMA_200'], label='EMA 200')
+        # plt.plot(bb_df['Date'], bb_df['BB_High'], label='Bollinger Bands High')
+        # plt.plot(bb_df['Date'], bb_df['BB_Low'], label='Bollinger Bands Low')
+        # plt.legend()
+        # plt.show()
 
-        return rsi_df, macd_df, ema_df, bb_df, obv_df
+        self.indicators = pd.merge(rsi_df, macd_df, on='Date', how='outer')
+        self.indicators = pd.merge(self.indicators, ema_df, on='Date', how='outer')
+        self.indicators = pd.merge(self.indicators, bb_df, on='Date', how='outer')
+        self.indicators = pd.merge(self.indicators, obv_df, on='Date', how='outer')
 
-loader = Load_data(company = "tesla")
-loader.load_indicators()
+        return self.indicators
