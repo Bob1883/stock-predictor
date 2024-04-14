@@ -2,7 +2,6 @@
 MONEY_TO_INVEST = 20 # % that can be invested per day
 RISK = 10 # % how risky the investment is
 
-
 date = "2020-05-10"
 money = 2000 # Dollar 
 stocks = [] # List of stocks
