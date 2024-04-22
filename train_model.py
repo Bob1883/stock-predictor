@@ -20,14 +20,14 @@ from preprocessing import *
 #█ x █ Fix price                                                                                       █   █
 #█ x █ Add the other data and see if it improves the model, if not, remove it                          █   █
 #█ x █ Commodity data looding is wrong                                                                 █   █
-#█   █ To much data from indicastors                                                                   █ x █	
-#█   █ indicators needs work                                                                           █ x █
+#█ x █ To much data from indicastors                                                                   █   █	
+#█ x █ indicators needs work                                                                           █   █
+#█ x █ Test witch commodity normelizer is best                                                         █   █
 #█   █ Add a algorithm to see what indicators are the best for AI backtesting                          █   █
-#█   █ Test witch commodity normelizer is best                                                         █   █
-
 #█   █ Do some backtesting, find the best strategy for the model                                       █   █
 #█   █ If total falure is achieved, pick a stock strat                                                 █   █
 #█   █ Check with companies the model is best at                                                       █   █
+
 #█   █ Fundementals data is to incomplete, find a better source (future problem)                       █   █
 
 def build_model(hp):
