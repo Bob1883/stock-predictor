@@ -354,7 +354,7 @@ class Load_data():
         ema_200 = calculate_ema(close_prices, window=200)
         bb_high_data, bb_low_data = calculate_bollinger_bands(close_prices)
         obv_data = calculate_obv(close_prices, volume)
-
+        
         # Create DataFrames for each indicator
         rsi_df = pd.DataFrame({'RSI': rsi_data, 'Date': dates[14:]})
         macd_df = pd.DataFrame({'MACD': macd_data, 'Signal': macd_signal_data, 'Histogram': macd_histogram_data, 'Date': dates})
