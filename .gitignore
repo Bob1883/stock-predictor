@@ -1,3 +1,7 @@
 models/
 dump/s_models/
 .env
+/_pycache_
+backtesting.py
+/data
+train_super_model.py

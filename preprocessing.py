@@ -267,3 +267,113 @@ def preprocessing(companies:list, test_stock:str, periode:int, exclude:list=[]):
             print("\033[91m" + f"Failed to preprocess {company}" + "\033[0m")
             
     return commodties, google_trends, changes, prices, political, news, names, rsi, macd, ema_20, ema_50, ema_200, bb_low, bb_high, obv, debt, gdp, inflation, unemployement
+
+companies = []
+for filename in os.listdir('data/data-day'):
+    if filename.endswith('.csv'):
+        companies.append(filename.split('.')[0].lower())
+
+import plotly.graph_objects as go
+
+def plot_commodity_data(commodities, points):
+    fig = go.Figure()
+
+    sizes = [point * 0.3 for point in points]  # Adjust the scaling factor as needed
+
+    fig.add_trace(go.Scatter(
+        x=[i for i in range(len(commodities))],
+        y=[i % 5 for i in range(len(commodities))],  # Adjust the y-coordinates for better layout
+        mode='markers+text',
+        marker=dict(
+            size=sizes,
+            color=points,
+            colorscale='Viridis',
+            opacity=0.7
+        ),
+        text=commodities,
+        textposition='middle center',
+        textfont=dict(
+            family='sans serif',
+            size=12,
+            color='black'
+        ),
+        hoverinfo='text',
+        hovertext=[f"Points: {point}" for point in points]
+    ))
+
+    annotations = [
+        go.layout.Annotation(
+            x=i,
+            y=i % 5 + 0.5,  # Adjust the y-coordinate for score position
+            text=str(point),
+            showarrow=False,
+            font=dict(size=12)
+        )
+        for i, point in enumerate(points)
+    ]
+
+    fig.update_layout(
+        title='Commodity Importance',
+        annotations=annotations,
+        xaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showticklabels=False
+        ),
+        yaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showticklabels=False
+        ),
+        showlegend=False,
+        width=800,
+        height=600
+    )
+
+    fig.show()
+
+def calculate_commodity_points(companies):
+    commodity_points = {}
+
+    for company in companies:
+        loader = Load_data(company=company.lower())
+        commodity_prices = loader.load_commodities()
+
+        diffs = {}
+        entire_price_data = loader.load_day_data()["Adj Close"].values
+
+        for commodity in commodity_prices:
+            if commodity != "Date":
+                commodity_price = [str(price) for price in commodity_prices[commodity]]
+
+                if len(commodity_price) > len(entire_price_data):
+                    commodity_price = commodity_price[:len(entire_price_data)]
+
+                commodity_price = scaler.fit_transform(np.array(commodity_price).reshape(-1, 1)).reshape(-1)
+                company_price = scaler.transform(np.array(entire_price_data).reshape(-1, 1)).reshape(-1)
+
+                if len(commodity_price) != len(company_price):
+                    company_price = company_price[:len(commodity_price)]
+
+                diff = np.sqrt(np.mean((commodity_price - company_price) ** 2))
+                diffs[commodity] = diff
+
+        sorted_commodities = sorted(diffs, key=diffs.get)
+
+        for i, commodity in enumerate(sorted_commodities[:5]):
+            if commodity not in commodity_points:
+                commodity_points[commodity] = 0
+            commodity_points[commodity] += 5 - i
+
+    return commodity_points
+
+# Rest of your code...
+
+if __name__ == "__main__":
+    # Your existing code...
+
+    commodity_points = calculate_commodity_points(companies)
+    commodities = list(commodity_points.keys())
+    points = list(commodity_points.values())
+
+    plot_commodity_data(commodities, points)
