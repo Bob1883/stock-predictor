@@ -25,7 +25,7 @@ portfolio = {}  # Dict of stocks in portfolio
 data = {}  # Dict of stock data
 
 def make_predictions(data):
-    model = load_model('models/test_1-2_xprice_ychange/best_model.h5')
+    model = load_model('models/test_3-1_p-n-c-na/best_model.h5')
     predictions = {}
     for stocks in data:
         commodity1 = data[stocks]["commodity1"]
@@ -70,7 +70,7 @@ def make_predictions(data):
         unemployement = np.array(unemployement)
         changes = np.array(changes)
         # make predictions for the next day
-        prediction = model.predict([prices], verbose=0)
+        prediction = model.predict([prices, news, commodity1, commodity2, commodity3, names], verbose=0)
         loader = Load_data(company=stock.lower())
         current_prices = loader.load_day_data()["Adj Close"].values
         max_temp_change = max(temp_change)
@@ -165,6 +165,8 @@ if os.path.exists(f"back_test/{file_name}.json"):
         money_graph = state["money_graph"]
 
 predictions = make_predictions(data)
+
+use_freq = False
 
 for i in range((periode*365)-n_past-day):
     # Find the top stocks for each day based on predicted price, risk, and confidence
