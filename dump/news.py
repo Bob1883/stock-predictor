@@ -276,8 +276,8 @@ def scrape_company(args):
                             data.update(todays_articles)
 
                             # Save the scraped data to a JSON file
-                            with open(f"data-news/{company_name}-news.json", "w") as json_file:
-                                json.dump(data, json_file, indent=4)
+                            # with open(f"data-news/{company_name}-news.json", "w") as json_file:
+                            #     json.dump(data, json_file, indent=4)
 
                             company_data = data
     

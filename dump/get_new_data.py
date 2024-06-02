@@ -78,7 +78,7 @@ for symbol in symbols:
         # save the data to a file, csv
         df = pd.DataFrame(adj_close, columns=['Adj Close'])
         df['Date'] = dates
-        df.to_csv(f"data/data-day/{names[symbols.index(symbol)]}.csv", index=False)
+        # df.to_csv(f"data/data-day/{names[symbols.index(symbol)]}.csv", index=False)
         print(df)
     except Exception as e:
         print(e)
